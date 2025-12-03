@@ -4,6 +4,8 @@ import com.crawler.client.abstracts.CrawlerEnv;
 import com.crawler.model.NewsPost;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -13,9 +15,16 @@ import org.jsoup.select.Elements;
  * Dantri News Crawler - kế thừa CrawlerEnv.
  */
 public class DantriClient extends CrawlerEnv {
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
+
     private LocalDate dateExtract(String label) {
-        String year = label.substring(0, 4), month = label.substring(4, 6), day = label.substring(6, 8);
-        return LocalDate.of(Integer.parseInt(year), Integer.parseInt(month), Integer.parseInt(day));
+        try {
+            // Sử dụng DateTimeFormatter thay vì substring thủ công
+            return LocalDate.parse(label, DATE_FORMATTER);
+        } catch (DateTimeParseException e) {
+            System.err.println("Không thể parse ngày: " + label + ". Sử dụng ngày hiện tại.");
+            return LocalDate.now();
+        }
     }
 
     @Override
@@ -56,7 +65,7 @@ public class DantriClient extends CrawlerEnv {
                             (date == null || date.isEmpty()) ? LocalDate.now() : dateExtract(date),
                             title,
                             excerpt,
-                            "DA›n trA-",
+                            "Dân trí",
                             comments
                     ));
 
@@ -64,7 +73,7 @@ public class DantriClient extends CrawlerEnv {
                 }
 
             } catch (IOException u) {
-                System.err.println("KhA'ng l §y Ž`’ø ¯œc trang t ¯® Dantri");
+                System.err.println("Không lấy được trang từ Dantri: " + u.getMessage());
             }
         }
     }

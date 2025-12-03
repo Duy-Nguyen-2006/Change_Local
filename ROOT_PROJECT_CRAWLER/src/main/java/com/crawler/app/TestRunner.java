@@ -28,12 +28,17 @@ public class TestRunner {
 
         // ========== 2. DEPENDENCY INJECTION (DI) ==========
         // TẠO TẤT CẢ CÁC THÀNH PHẦN CONCRETE (CONCRETE CLASSES)
+        ISearchClient newsClient = null;
         try (WebhookProcessor webhookProcessor = new WebhookProcessor("https://api.volunteer-community.io.vn/v1/chat/completions")) {
 
             IPostRepository repository = new SQLitePostRepository();
 
             // CHỌN CLIENT CỤ THỂ ĐỂ TEST (Ví dụ: VNExpress)
-            ISearchClient newsClient = new VNExpressClient();
+            newsClient = new VNExpressClient();
+
+            // LIFECYCLE MANAGEMENT: Initialize crawler TRƯỚC khi sử dụng
+            // PostService KHÔNG nên quản lý lifecycle của crawler
+            newsClient.initialize();
 
             // CẤU HÌNH KEYWORDS CHO NEWS FILTER (Configuration Layer)
             List<String> disasterKeywords = Arrays.asList(
@@ -51,7 +56,7 @@ public class TestRunner {
 
             // ========== 3. GỌI LOGIC NGHIỆP VỤ (SERVICE CALL) ==========
             System.out.println("\n[GỌI SERVICE] province=" + province);
-            
+
             // POLYMORPHISM: Hàm này sẽ tự động gọi Crawl/Webhook nếu chưa có cache
             List<? extends AbstractPost> results = service.getPosts(province, startDate, endDate);
 
@@ -76,6 +81,16 @@ public class TestRunner {
         } catch (Exception e) {
             System.err.println("LỖI KHÔNG XÁC ĐỊNH: " + e.getMessage());
             e.printStackTrace();
+        } finally {
+            // LIFECYCLE MANAGEMENT: Đóng crawler trong finally block
+            if (newsClient != null) {
+                try {
+                    newsClient.close();
+                    System.out.println("\n[LIFECYCLE] Crawler đã được đóng.");
+                } catch (CrawlerException e) {
+                    System.err.println("LỖI khi đóng crawler: " + e.getMessage());
+                }
+            }
         }
     }
 }
