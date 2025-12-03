@@ -1,0 +1,229 @@
+package com.crawler.processor;
+
+import com.crawler.client.CrawlerException;
+import com.crawler.model.AbstractPost;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * WebhookProcessor - CONCRETE IMPLEMENTATION của IDataProcessor
+ *
+ * DATA ENRICHMENT PATTERN:
+ * - Gọi API bên ngoài (webhook) để phân tích nội dung bài viết
+ * - Nhận về sentiment, location, focus
+ * - Cập nhật metadata vào từng Post
+ *
+ * CHAIN OF RESPONSIBILITY:
+ * - Có thể chain nhiều processor (Webhook → Filter → Validation)
+ * - Mỗi processor xử lý một khía cạnh của data
+ *
+ * DIP: Implement interface IDataProcessor (abstraction)
+ * SRP: Chỉ có MỘT trách nhiệm - Enrichment qua Webhook API
+ * OCP: Có thể thêm FilterProcessor, ValidationProcessor mà KHÔNG SỬA code này
+ *
+ * WEBHOOK API CONTRACT (giả định):
+ * POST /analyze
+ * Request Body: { "content": "..." }
+ * Response Body: {
+ *   "sentiment": "positive" | "negative" | "neutral",
+ *   "location": "Hanoi" | "HCMC" | ...,
+ *   "focus": "politics" | "economy" | "sports" | ...
+ * }
+ */
+public class WebhookProcessor implements IDataProcessor {
+
+    private final String webhookUrl;
+    private final Gson gson;
+    private final CloseableHttpClient httpClient;
+
+    /**
+     * Constructor với URL của webhook API
+     * @param webhookUrl URL của webhook API (ví dụ: "https://api.example.com/analyze")
+     */
+    public WebhookProcessor(String webhookUrl) {
+        this.webhookUrl = webhookUrl;
+        this.gson = new Gson();
+        this.httpClient = HttpClients.createDefault();
+    }
+
+    /**
+     * Constructor mặc định - dùng mock webhook (không gọi API thật)
+     * Dùng cho testing và demo
+     */
+    public WebhookProcessor() {
+        this(null); // null = mock mode
+    }
+
+    /**
+     * Xử lý và làm giàu dữ liệu posts bằng webhook API
+     * POLYMORPHISM: Nhận List<? extends AbstractPost> (NewsPost hoặc SocialPost)
+     *
+     * Strategy:
+     * 1. Với mỗi Post, gọi webhook API với nội dung của Post
+     * 2. Parse response để lấy sentiment, location, focus
+     * 3. Cập nhật metadata vào Post qua setSentiment(), setLocation(), setFocus()
+     * 4. Trả về danh sách Posts đã được enriched
+     */
+    @Override
+    public List<? extends AbstractPost> process(List<? extends AbstractPost> rawPosts) throws CrawlerException {
+        if (rawPosts == null || rawPosts.isEmpty()) {
+            return rawPosts;
+        }
+
+        System.out.println("\n>>> WebhookProcessor: Enriching " + rawPosts.size() + " posts...");
+
+        List<AbstractPost> enrichedPosts = new ArrayList<>();
+
+        for (AbstractPost post : rawPosts) {
+            try {
+                // Gọi webhook để phân tích nội dung
+                JsonObject metadata = analyzeContent(post.getContent());
+
+                // Cập nhật metadata vào Post
+                if (metadata.has("sentiment")) {
+                    post.setSentiment(metadata.get("sentiment").getAsString());
+                }
+                if (metadata.has("location")) {
+                    post.setLocation(metadata.get("location").getAsString());
+                }
+                if (metadata.has("focus")) {
+                    post.setFocus(metadata.get("focus").getAsString());
+                }
+
+                enrichedPosts.add(post);
+
+                System.out.println("  ✓ Enriched: " + post.getPlatform() +
+                        " | sentiment=" + post.getSentiment() +
+                        " | location=" + post.getLocation() +
+                        " | focus=" + post.getFocus());
+
+            } catch (Exception e) {
+                // Nếu webhook thất bại, vẫn giữ Post (chỉ không có metadata)
+                System.err.println("  ✗ Failed to enrich post: " + e.getMessage());
+                enrichedPosts.add(post); // Keep original post without metadata
+            }
+        }
+
+        System.out.println(">>> WebhookProcessor: Completed enrichment\n");
+        return enrichedPosts;
+    }
+
+    /**
+     * Gọi webhook API để phân tích nội dung
+     * MOCK MODE: Nếu webhookUrl == null, trả về mock data (không gọi API thật)
+     *
+     * @param content Nội dung bài viết cần phân tích
+     * @return JsonObject chứa sentiment, location, focus
+     * @throws CrawlerException Nếu HTTP request thất bại
+     */
+    private JsonObject analyzeContent(String content) throws CrawlerException {
+        // MOCK MODE - Dùng cho testing và demo
+        if (webhookUrl == null) {
+            return generateMockMetadata(content);
+        }
+
+        // REAL MODE - Gọi HTTP POST đến webhook API
+        try {
+            HttpPost httpPost = new HttpPost(webhookUrl);
+
+            // Tạo request body
+            JsonObject requestBody = new JsonObject();
+            requestBody.addProperty("content", content);
+            String jsonPayload = gson.toJson(requestBody);
+
+            // Set request entity
+            StringEntity entity = new StringEntity(jsonPayload, ContentType.APPLICATION_JSON);
+            httpPost.setEntity(entity);
+
+            // Execute request
+            try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
+                int statusCode = response.getCode();
+
+                if (statusCode >= 200 && statusCode < 300) {
+                    String responseBody = EntityUtils.toString(response.getEntity());
+                    return JsonParser.parseString(responseBody).getAsJsonObject();
+                } else {
+                    throw new CrawlerException("Webhook returned error: HTTP " + statusCode);
+                }
+            }
+
+        } catch (IOException e) {
+            throw new CrawlerException("Failed to call webhook API: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Generate mock metadata cho testing và demo
+     * Rule-based phân tích đơn giản dựa vào từ khóa trong content
+     */
+    private JsonObject generateMockMetadata(String content) {
+        JsonObject metadata = new JsonObject();
+
+        // Mock sentiment - Dựa vào từ khóa cảm xúc
+        String lowerContent = content.toLowerCase();
+        if (lowerContent.contains("tốt") || lowerContent.contains("thành công") ||
+            lowerContent.contains("tăng") || lowerContent.contains("phát triển")) {
+            metadata.addProperty("sentiment", "positive");
+        } else if (lowerContent.contains("xấu") || lowerContent.contains("thất bại") ||
+                   lowerContent.contains("giảm") || lowerContent.contains("khủng hoảng")) {
+            metadata.addProperty("sentiment", "negative");
+        } else {
+            metadata.addProperty("sentiment", "neutral");
+        }
+
+        // Mock location - Dựa vào tên địa danh
+        if (lowerContent.contains("hà nội") || lowerContent.contains("hanoi")) {
+            metadata.addProperty("location", "Hanoi");
+        } else if (lowerContent.contains("hồ chí minh") || lowerContent.contains("sài gòn") ||
+                   lowerContent.contains("ho chi minh") || lowerContent.contains("saigon")) {
+            metadata.addProperty("location", "HCMC");
+        } else if (lowerContent.contains("đà nẵng") || lowerContent.contains("da nang")) {
+            metadata.addProperty("location", "Da Nang");
+        } else {
+            metadata.addProperty("location", "Vietnam");
+        }
+
+        // Mock focus - Dựa vào chủ đề
+        if (lowerContent.contains("chính trị") || lowerContent.contains("chính phủ") ||
+            lowerContent.contains("bầu cử")) {
+            metadata.addProperty("focus", "politics");
+        } else if (lowerContent.contains("kinh tế") || lowerContent.contains("doanh nghiệp") ||
+                   lowerContent.contains("thị trường")) {
+            metadata.addProperty("focus", "economy");
+        } else if (lowerContent.contains("thể thao") || lowerContent.contains("bóng đá")) {
+            metadata.addProperty("focus", "sports");
+        } else if (lowerContent.contains("công nghệ") || lowerContent.contains("ai") ||
+                   lowerContent.contains("startup")) {
+            metadata.addProperty("focus", "technology");
+        } else {
+            metadata.addProperty("focus", "general");
+        }
+
+        return metadata;
+    }
+
+    /**
+     * Close HTTP client khi không dùng nữa
+     */
+    public void close() {
+        try {
+            if (httpClient != null) {
+                httpClient.close();
+            }
+        } catch (IOException e) {
+            System.err.println("Failed to close HttpClient: " + e.getMessage());
+        }
+    }
+}

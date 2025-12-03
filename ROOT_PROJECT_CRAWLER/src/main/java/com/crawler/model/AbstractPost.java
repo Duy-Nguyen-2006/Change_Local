@@ -13,6 +13,11 @@ public abstract class AbstractPost {
     private String content;
     private String platform;
 
+    // Webhook metadata - MUTABLE (có thể được cập nhật từ webhook)
+    private String sentiment;  // "positive", "negative", "neutral"
+    private String location;   // Vị trí địa lý được phân tích từ nội dung
+    private String focus;      // Chủ đề chính của bài viết
+
     /**
      * Constructor chung cho lớp con gọi
      * @param content Nội dung bài viết
@@ -40,6 +45,33 @@ public abstract class AbstractPost {
 
     public String getPlatform() {
         return platform;
+    }
+
+    // ========== WEBHOOK METADATA - GETTERS & SETTERS ==========
+    // Các trường này MUTABLE - được cập nhật từ Webhook sau khi crawl
+
+    public String getSentiment() {
+        return sentiment;
+    }
+
+    public void setSentiment(String sentiment) {
+        this.sentiment = sentiment;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
+    }
+
+    public String getFocus() {
+        return focus;
+    }
+
+    public void setFocus(String focus) {
+        this.focus = focus;
     }
 
     // ========== PHƯƠNG THỨC TRỪU TƯỢNG (ABSTRACTION) ==========
