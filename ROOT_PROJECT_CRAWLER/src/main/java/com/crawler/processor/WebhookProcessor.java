@@ -1,5 +1,5 @@
 package com.crawler.processor;
-
+import org.apache.hc.core5.http.ParseException; 
 import com.crawler.client.CrawlerException;
 import com.crawler.model.AbstractPost;
 import com.google.gson.Gson;
@@ -42,7 +42,7 @@ import java.util.List;
  *   "focus": "politics" | "economy" | "sports" | ...
  * }
  */
-public class WebhookProcessor implements IDataProcessor {
+public class WebhookProcessor implements IDataProcessor, AutoCloseable {
 
     private final String webhookUrl;
     private final Gson gson;
@@ -159,8 +159,8 @@ public class WebhookProcessor implements IDataProcessor {
                 }
             }
 
-        } catch (IOException e) {
-            throw new CrawlerException("Failed to call webhook API: " + e.getMessage(), e);
+        } catch (IOException | ParseException e) { // BẮT THÊM ParseException
+        throw new CrawlerException("Failed to call webhook API: " + e.getMessage(), e);
         }
     }
 
