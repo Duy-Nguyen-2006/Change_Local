@@ -26,7 +26,7 @@ public class TestRunner {
 
         // ========== 2. DEPENDENCY INJECTION (DI) ==========
         // TẠO TẤT CẢ CÁC THÀNH PHẦN CONCRETE (CONCRETE CLASSES)
-        try (WebhookProcessor webhookProcessor = new WebhookProcessor("https://7jk103q70xnk.ezbase.vn/webhook/run")) {
+        try (WebhookProcessor webhookProcessor = new WebhookProcessor("https://api.volunteer-community.io.vn/v1/chat/completions")) {
             
             IPostRepository repository = new SQLitePostRepository();
             

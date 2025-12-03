@@ -1,8 +1,9 @@
 package com.crawler.processor;
-import org.apache.hc.core5.http.ParseException; 
+import org.apache.hc.core5.http.ParseException;
 import com.crawler.client.CrawlerException;
 import com.crawler.model.AbstractPost;
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
@@ -45,26 +46,73 @@ import java.util.List;
  */
 public class WebhookProcessor implements IDataProcessor, AutoCloseable {
 
-    private final String webhookUrl;
+    private static final String DEFAULT_AI_URL = "https://api.volunteer-community.io.vn/v1/chat/completions";
+    private static final String DEFAULT_MODEL = "gemini-2.5-flash";
+    private static final String DEFAULT_API_KEY = "duy-demo-key";
+    private static final String SYSTEM_PROMPT = "Bạn là một AI phân loại nội dung bài viết.\n"
+            + "Nhiệm vụ của bạn: nhận đầu vào là nội dung bài viết dạng văn bản và trả về kết quả theo đúng cấu trúc JSON sau:\n\n"
+            + "{\n"
+            + "  \"loai_bai_viet\": \"\",\n"
+            + "  \"cam_xuc_bai_viet\": \"\",\n"
+            + "  \"tinh_thanh\": \"\",\n"
+            + "  \"huong_bai_viet\": \"\"\n"
+            + "}\n\n"
+            + "Trong đó:\n\n"
+            + "1. loai_bai_viet:\n"
+            + "   - \"cuu_ho\" nếu bài viết nói về cứu hộ, hỗ trợ, giúp đỡ.\n"
+            + "   - \"thiet_hai\" nếu bài viết nói về thiệt hại, mất mát, tai nạn, hư hỏng.\n\n\n"
+            + "2. cam_xuc_bai_viet:\n"
+            + "   - \"tich_cuc\"\n"
+            + "   - \"tieu_cuc\"\n\n\n"
+            + "3. tinh_thanh:\n"
+            + "   - Xác định tỉnh/thành xuất hiện trong bài viết.\n"
+            + "   - Nếu không có địa phương nào, trả về \"khong_xac_dinh\".\n\n\n"
+            + "Yêu cầu:\n"
+            + "- Chỉ trả về JSON, không giải thích thêm.";
+
+    private final String aiApiUrl;
+    private final String apiKey;
+    private final String model;
+    private final String systemPrompt;
     private final Gson gson;
     private final CloseableHttpClient httpClient;
 
     /**
-     * Constructor với URL của webhook API
-     * @param webhookUrl URL của webhook API (ví dụ: "https://api.example.com/analyze")
+     * Constructor với thông số AI endpoint
+     * @param aiApiUrl URL của AI API (ví dụ: "https://api.example.com/v1/chat/completions")
+     * @param apiKey API key để xác thực
+     * @param model Model AI cần sử dụng
+     * @param systemPrompt Prompt hệ thống để model trả về JSON đúng format
      */
-    public WebhookProcessor(String webhookUrl) {
-        this.webhookUrl = webhookUrl;
+    public WebhookProcessor(String aiApiUrl, String apiKey, String model, String systemPrompt) {
+        this.aiApiUrl = aiApiUrl;
+        this.apiKey = apiKey;
+        this.model = model;
+        this.systemPrompt = systemPrompt;
         this.gson = new Gson();
         this.httpClient = HttpClients.createDefault();
     }
 
     /**
-     * Constructor mặc định - dùng mock webhook (không gọi API thật)
-     * Dùng cho testing và demo
+     * Constructor rút gọn - chỉ cần truyền URL AI, dùng default model và API key
+     * @param aiApiUrl URL của AI API (ví dụ: "https://api.example.com/v1/chat/completions")
+     */
+    public WebhookProcessor(String aiApiUrl) {
+        this(aiApiUrl, DEFAULT_API_KEY, DEFAULT_MODEL, SYSTEM_PROMPT);
+    }
+
+    /**
+     * Constructor mặc định - dùng AI endpoint mặc định
      */
     public WebhookProcessor() {
-        this(null); // null = mock mode
+        this(DEFAULT_AI_URL, DEFAULT_API_KEY, DEFAULT_MODEL, SYSTEM_PROMPT);
+    }
+
+    /**
+     * Factory tạo processor ở mock mode (không gọi API thật)
+     */
+    public static WebhookProcessor mockProcessor() {
+        return new WebhookProcessor(null, DEFAULT_API_KEY, DEFAULT_MODEL, SYSTEM_PROMPT);
     }
 
     /**
@@ -135,22 +183,42 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
      */
     private JsonObject analyzeContent(String content) throws CrawlerException {
         // MOCK MODE - Dùng cho testing và demo
-        if (webhookUrl == null) {
+        if (aiApiUrl == null) {
             return generateMockMetadata(content);
         }
 
-        // REAL MODE - Gọi HTTP POST đến webhook API
+        // REAL MODE - Gọi AI API để phân tích nội dung
         try {
-            HttpPost httpPost = new HttpPost(webhookUrl);
+            HttpPost httpPost = new HttpPost(aiApiUrl);
 
-            // Tạo request body
+            // Tạo request body theo format chat completions
             JsonObject requestBody = new JsonObject();
-            requestBody.addProperty("content", content);
+            requestBody.addProperty("model", model);
+
+            JsonArray messages = new JsonArray();
+            JsonObject systemMessage = new JsonObject();
+            systemMessage.addProperty("role", "system");
+            systemMessage.addProperty("content", systemPrompt);
+            messages.add(systemMessage);
+
+            JsonObject userMessage = new JsonObject();
+            userMessage.addProperty("role", "user");
+            userMessage.addProperty("content", content);
+            messages.add(userMessage);
+
+            requestBody.add("messages", messages);
+            requestBody.addProperty("temperature", 0.0);
+
             String jsonPayload = gson.toJson(requestBody);
 
             // Set request entity
             StringEntity entity = new StringEntity(jsonPayload, ContentType.APPLICATION_JSON);
             httpPost.setEntity(entity);
+
+            // Auth header nếu có API key
+            if (apiKey != null && !apiKey.isEmpty()) {
+                httpPost.addHeader("Authorization", "Bearer " + apiKey);
+            }
 
             // Execute request
             try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
@@ -158,37 +226,56 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
 
                 if (statusCode >= 200 && statusCode < 300) {
                     String responseBody = EntityUtils.toString(response.getEntity());
-                    return parseWebhookResponse(responseBody);
+                    return parseAiResponse(responseBody);
                 } else {
-                    throw new CrawlerException("Webhook returned error: HTTP " + statusCode);
+                    throw new CrawlerException("AI API returned error: HTTP " + statusCode);
                 }
             }
 
         } catch (IOException | ParseException e) { // BẮT THÊM ParseException
-        throw new CrawlerException("Failed to call webhook API: " + e.getMessage(), e);
+        throw new CrawlerException("Failed to call AI API: " + e.getMessage(), e);
         }
     }
 
     /**
-     * Parse webhook response - xử lý format đặc biệt
-     * Webhook trả về: { "output": "```json\n{...}\n```" }
-     * Cần extract JSON thật từ bên trong markdown code block
+     * Parse AI response - xử lý format đặc biệt
+     * AI trả về content ở field choices[0].message.content (giống OpenAI style)
+     * Có thể chứa code block markdown, cần extract JSON bên trong
      */
-    private JsonObject parseWebhookResponse(String responseBody) throws CrawlerException {
+    private JsonObject parseAiResponse(String responseBody) throws CrawlerException {
         try {
             // Parse response wrapper
             JsonObject wrapper = JsonParser.parseString(responseBody).getAsJsonObject();
 
-            // Kiểm tra có field "output" không
-            if (!wrapper.has("output")) {
-                // Nếu không có, giả sử đây là JSON trực tiếp
-                return wrapper;
+            // Ưu tiên format kiểu OpenAI: choices[0].message.content
+            if (wrapper.has("choices")) {
+                JsonArray choices = wrapper.getAsJsonArray("choices");
+                if (!choices.isEmpty()) {
+                    JsonObject firstChoice = choices.get(0).getAsJsonObject();
+                    if (firstChoice.has("message")) {
+                        JsonObject message = firstChoice.getAsJsonObject("message");
+                        if (message.has("content")) {
+                            String output = message.get("content").getAsString();
+                            return extractJsonContent(output, responseBody);
+                        }
+                    }
+                }
             }
 
-            // Lấy output string
-            String output = wrapper.get("output").getAsString();
+            // Fallback: nếu responseBody đã là JSON đúng format
+            return extractJsonContent(responseBody, responseBody);
 
-            // Remove markdown code block wrapper: ```json ... ```
+        } catch (Exception e) {
+            throw new CrawlerException("Failed to parse AI response: " + e.getMessage() +
+                                     "\nResponse body: " + responseBody, e);
+        }
+    }
+
+    /**
+     * Extract JSON content, loại bỏ markdown code block nếu có
+     */
+    private JsonObject extractJsonContent(String output, String rawResponse) throws CrawlerException {
+        try {
             String jsonContent = output.trim();
             if (jsonContent.startsWith("```json")) {
                 jsonContent = jsonContent.substring("```json".length()).trim();
@@ -200,12 +287,10 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
                 jsonContent = jsonContent.substring(0, jsonContent.length() - 3).trim();
             }
 
-            // Parse JSON thật
             return JsonParser.parseString(jsonContent).getAsJsonObject();
-
         } catch (Exception e) {
-            throw new CrawlerException("Failed to parse webhook response: " + e.getMessage() +
-                                     "\nResponse body: " + responseBody, e);
+            throw new CrawlerException("Failed to parse AI JSON content: " + e.getMessage() +
+                    "\nResponse body: " + rawResponse, e);
         }
     }
 
