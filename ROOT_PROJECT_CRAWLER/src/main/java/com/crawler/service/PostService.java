@@ -5,7 +5,7 @@ import com.crawler.client.ISearchClient;
 import com.crawler.model.AbstractPost;
 import com.crawler.processor.IDataProcessor;
 import com.crawler.repository.IPostRepository;
-
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -70,76 +70,32 @@ public class PostService implements IPostService {
      * 3. If not → crawl → process → save → return (SLOW PATH)
      */
     @Override
-    public List<? extends AbstractPost> getPosts(String keyword, int limit) throws CrawlerException {
-        if (keyword == null || keyword.trim().isEmpty()) {
-            throw new IllegalArgumentException("Keyword cannot be null or empty!");
+    public List<? extends AbstractPost> getPosts(String province, LocalDate startDate, LocalDate endDate) throws CrawlerException {
+        // TẠO CACHE KEY: Keyword + DateRange
+        String cacheKey = String.format("%s_%s_%s", province, startDate, endDate).replace(" ", "_");
+
+        System.out.println("[PostService] Checking cache for key: " + cacheKey);
+
+        // 1. Check Cache
+        if (repository.isCached(cacheKey)) {
+            System.out.println("-> Cache HIT!");
+            return repository.load(cacheKey);
         }
 
-        if (limit <= 0) {
-            throw new IllegalArgumentException("Limit must be positive!");
-        }
+        System.out.println("-> Cache MISS! Crawling...");
 
-        System.out.println("╔════════════════════════════════════════════════╗");
-        System.out.println("║  PostService: getPosts(\"" + keyword + "\", " + limit + ")");
-        System.out.println("╚════════════════════════════════════════════════╝");
+        // 2. Crawl (DÙNG HÀM SEARCH MỚI VỚI DATE)
+        crawler.initialize();
+        List<? extends AbstractPost> rawPosts = crawler.search(province, startDate, endDate);
+        crawler.close();
 
-        // ========== STEP 1: CHECK CACHE ==========
-        System.out.println("\n[1] Checking cache...");
-        boolean isCached = repository.isCached(keyword);
+        // 3. Process (Webhook)
+        List<? extends AbstractPost> processedPosts = processor.process(rawPosts);
 
-        if (isCached) {
-            // ========== FAST PATH: LOAD FROM CACHE ==========
-            System.out.println("  ✓ Cache HIT! Loading from repository...");
-            List<? extends AbstractPost> cachedPosts = repository.load(keyword);
+        // 4. Save Cache
+        repository.save(processedPosts, cacheKey);
 
-            if (cachedPosts != null && !cachedPosts.isEmpty()) {
-                System.out.println("  ✓ Loaded " + cachedPosts.size() + " posts from cache");
-                System.out.println("\n╔════════════════════════════════════════════════╗");
-                System.out.println("║  PostService: Returning cached posts (FAST)   ║");
-                System.out.println("╚════════════════════════════════════════════════╝\n");
-                return cachedPosts;
-            } else {
-                System.out.println("  ✗ Cache corrupted or empty, falling back to crawl...");
-            }
-        } else {
-            System.out.println("  ✗ Cache MISS! Need to crawl...");
-        }
-
-        // ========== SLOW PATH: CRAWL → PROCESS → SAVE ==========
-        try {
-            // STEP 2: CRAWL
-            System.out.println("\n[2] Crawling from source...");
-            crawler.initialize();
-            List<? extends AbstractPost> rawPosts = crawler.search(keyword, limit);
-            crawler.close();
-
-            if (rawPosts == null || rawPosts.isEmpty()) {
-                System.out.println("  ✗ No posts found from crawler");
-                return List.of(); // Return empty list
-            }
-
-            System.out.println("  ✓ Crawled " + rawPosts.size() + " posts");
-
-            // STEP 3: PROCESS (Enrich with webhook)
-            System.out.println("\n[3] Processing posts (webhook enrichment)...");
-            List<? extends AbstractPost> enrichedPosts = processor.process(rawPosts);
-            System.out.println("  ✓ Processed " + enrichedPosts.size() + " posts");
-
-            // STEP 4: SAVE TO CACHE
-            System.out.println("\n[4] Saving to cache...");
-            repository.save(enrichedPosts, keyword);
-            System.out.println("  ✓ Saved to cache successfully");
-
-            System.out.println("\n╔════════════════════════════════════════════════╗");
-            System.out.println("║  PostService: Returning fresh posts (SLOW)    ║");
-            System.out.println("╚════════════════════════════════════════════════╝\n");
-
-            return enrichedPosts;
-
-        } catch (CrawlerException e) {
-            System.err.println("  ✗ PostService failed: " + e.getMessage());
-            throw e; // Re-throw to caller
-        }
+        return processedPosts;
     }
 
     /**

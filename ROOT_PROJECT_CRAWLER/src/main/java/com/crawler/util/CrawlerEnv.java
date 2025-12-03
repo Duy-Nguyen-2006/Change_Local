@@ -2,7 +2,6 @@ package com.crawler.util;
 
 import com.crawler.client.ISearchClient;
 import com.crawler.client.CrawlerException;
-import com.crawler.model.AbstractPost;
 import com.crawler.model.NewsPost;
 import java.time.LocalDate;
 import java.util.*;
@@ -14,7 +13,7 @@ import java.util.*;
  * Bây giờ CrawlerEnv CÓ THỂ THAY THẾ cho bất kỳ ISearchClient nào!
  */
 public abstract class CrawlerEnv implements ISearchClient {
-    private ArrayList<NewsPost> resultPosts = new ArrayList<NewsPost>();
+    protected ArrayList<NewsPost> resultPosts = new ArrayList<NewsPost>();
 
     public static final String[] KEYWORDS = {"bão", "lũ", "lụt", "sạt lở", "thiên tai", "ngập",
     "mưa lớn", "mưa to", "giông", "lốc", "triều cường"};
@@ -28,7 +27,8 @@ public abstract class CrawlerEnv implements ISearchClient {
         if (posts.size() != 0) for (NewsPost post: posts) {
            if (post.getPostDate() == null) continue;
 
-           if (post.getPostDate().compareTo(from) >= 0 && 0 >= post.getPostDate().compareTo(to)) {
+           if ((post.getPostDate().isEqual(from) || post.getPostDate().isAfter(from)) &&
+               (post.getPostDate().isEqual(to) || post.getPostDate().isBefore(to))) {
                fDate.add(post);
            }
         }
@@ -96,25 +96,20 @@ public abstract class CrawlerEnv implements ISearchClient {
      * Đây là phương thức bắt buộc để News Crawler tương thích với Social Crawler
      */
     @Override
-    public List<NewsPost> search(String query, int limit) throws CrawlerException {
+    public List<NewsPost> search(String query, LocalDate startDate, LocalDate endDate) throws CrawlerException {
         try {
             clearResults();
 
-            // Crawl với date range (30 ngày gần nhất)
-            LocalDate fromDate = LocalDate.now().minusDays(30);
-            LocalDate toDate = LocalDate.now();
-
-            // Gọi abstract method getPosts (lớp con implement)
+            // 1. Gọi hàm getPosts (lớp con thực hiện việc crawl thô)
             getPosts(query);
 
-            // Filter theo date và keyword
-            resultPosts = filterPostsDate(resultPosts, fromDate, toDate);
-            resultPosts = filterPostsKeyword(resultPosts);
-
-            // Limit kết quả
-            if (limit > 0 && resultPosts.size() > limit) {
-                resultPosts = new ArrayList<>(resultPosts.subList(0, limit));
+            // 2. Lọc theo ngày (Dùng tham số truyền vào!)
+            if (startDate != null && endDate != null) {
+                resultPosts = filterPostsDate(resultPosts, startDate, endDate);
             }
+
+            // 3. Lọc theo keyword (bão, lũ...)
+            resultPosts = filterPostsKeyword(resultPosts);
 
             return new ArrayList<>(resultPosts);
 
