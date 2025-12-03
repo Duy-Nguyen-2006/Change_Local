@@ -1,32 +1,23 @@
 package com.crawler.client;
 
+import com.crawler.client.abstracts.CrawlerEnv;
 import com.crawler.model.NewsPost;
-import com.crawler.util.CrawlerEnv;
 import java.io.IOException;
-import java.time.*;
+import java.time.LocalDate;
 import org.jsoup.Jsoup;
-import org.jsoup.nodes.*;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 /**
- * Dantri News Crawler - Kế thừa CrawlerEnv (IMPLEMENTS ISearchClient qua CrawlerEnv)
- * ÁP DỤNG INHERITANCE và POLYMORPHISM
- * Return type: List<NewsPost> (áp dụng INHERITANCE)
+ * Dantri News Crawler - kế thừa CrawlerEnv.
  */
 public class DantriClient extends CrawlerEnv {
-    /**
-     * Xử lý số liệu ID, ví dụ 20251020160336 thành 2025-10-20 (Dạng YYYY-MM-DD)
-     * @param label
-     * @return Ngày đã được xử lý
-     */
     private LocalDate dateExtract(String label) {
         String year = label.substring(0, 4), month = label.substring(4, 6), day = label.substring(6, 8);
         return LocalDate.of(Integer.parseInt(year), Integer.parseInt(month), Integer.parseInt(day));
     }
 
-    /**
-     * Hàm xử lý chính - OVERRIDE abstract method
-     */
     @Override
     public void getPosts(String search_input) {
         final int PAGES = 5;
@@ -41,11 +32,15 @@ public class DantriClient extends CrawlerEnv {
                 for (Element post: posts) {
                     Element excerpt_box =  post.getElementsByClass("article-excerpt").get(0);
 
-                    String title, excerpt, date = ""; int comments;
+                    String title, excerpt, date = "", sourceId = ""; int comments;
                     try {
-                        title = post.getElementsByClass("dt-text-black-mine").text().strip();
+                        Element linkEl = post.getElementsByClass("dt-text-black-mine").first();
+                        title = linkEl != null ? linkEl.text().strip() : "";
                         excerpt = excerpt_box.text().strip();
                         date = excerpt_box.getElementsByTag("span").get(0).attr("data-id").strip();
+                        if (linkEl != null) {
+                            sourceId = linkEl.attr("href");
+                        }
                     } catch (Exception e) {
                         continue;
                     }
@@ -56,12 +51,12 @@ public class DantriClient extends CrawlerEnv {
                         comments = 0;
                     }
 
-                    // SỬ DỤNG NewsPost thay vì Post
                     addPost(new NewsPost(
-                            (date == "") ? LocalDate.now() : dateExtract(date),
+                            sourceId,
+                            (date == null || date.isEmpty()) ? LocalDate.now() : dateExtract(date),
                             title,
                             excerpt,
-                            "Dân trí",
+                            "DA›n trA-",
                             comments
                     ));
 
@@ -69,7 +64,7 @@ public class DantriClient extends CrawlerEnv {
                 }
 
             } catch (IOException u) {
-                System.err.println("Không lấy được trang từ Dantri");
+                System.err.println("KhA'ng l §y Ž`’ø ¯œc trang t ¯® Dantri");
             }
         }
     }

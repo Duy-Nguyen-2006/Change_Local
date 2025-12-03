@@ -3,6 +3,7 @@ package com.crawler.util;
 import com.google.gson.*;
 import com.crawler.model.SocialPost;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,17 +36,31 @@ public class TikTokParser {
             long comments = v.get("comment_count").getAsLong();
             long reaction = likes + shares + comments;
 
-            // unix epoch seconds -> local date string
+            // unix epoch seconds -> local date
             long createdAt = v.get("create_time").getAsLong();
-            String createdDate = Instant.ofEpochSecond(createdAt)
+            LocalDate createdDate = Instant.ofEpochSecond(createdAt)
                     .atZone(ZoneId.of("Asia/Ho_Chi_Minh"))
-                    .toLocalDate()
-                    .toString();
+                    .toLocalDate();
 
-            SocialPost item = new SocialPost(content, "tiktok", createdDate, reaction);
+            String sourceId = extractId(v);
+
+            SocialPost item = new SocialPost(sourceId, content, "tiktok", createdDate, reaction);
             list.add(item);
         }
         return list;
+    }
+
+    private static String extractId(JsonObject video) {
+        if (video.has("video_id")) {
+            return video.get("video_id").getAsString();
+        }
+        if (video.has("aweme_id")) {
+            return video.get("aweme_id").getAsString();
+        }
+        if (video.has("id")) {
+            return video.get("id").getAsString();
+        }
+        return "";
     }
 
     /** Read the "cursor" field returned by the API to get the next page. */

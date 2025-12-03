@@ -2,7 +2,6 @@ package com.crawler.client;
 
 import com.crawler.model.SocialPost;
 import com.crawler.util.TikTokParser;
-import com.crawler.util.SocialDatabase;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -171,7 +170,6 @@ public class TikTokSearchClient implements ISearchClient {
             }
 
             System.out.println("Total videos collected: " + allVideos.size());
-            SocialDatabase.savePosts(allVideos);
 
         } catch (CrawlerException e) {
             System.err.println("Lỗi crawl: " + e.getMessage());

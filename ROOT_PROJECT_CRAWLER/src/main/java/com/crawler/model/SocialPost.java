@@ -1,81 +1,53 @@
 package com.crawler.model;
 
+import java.time.LocalDate;
+
 /**
- * SocialPost - Đại diện cho bài viết TỪ MẠNG XÃ HỘI
- * QUAN HỆ IS-A: SocialPost LÀ AbstractPost (INHERITANCE)
- *
- * SRP: Chỉ chứa các trường và logic RIÊNG cho Social Media
- * KHÔNG chứa title, postDate, comments (những thứ của News)
+ * SocialPost - đại diện cho bài viết mạng xã hội.
  */
 public class SocialPost extends AbstractPost {
-    // Các trường RIÊNG của Social Media (ENCAPSULATION - private)
     private long reaction;
-    private String createdDate; // Giữ String vì social API trả về format khác nhau
+    private LocalDate createdDate;
 
     public static final String[] HEADER = {"date", "content", "platform", "reaction", "engagement_score"};
 
-    /**
-     * Constructor cho SocialPost
-     */
-    public SocialPost(String content, String platform, String createdDate, long reaction) {
-        super(content, platform); // Gọi constructor của lớp cha
+    public SocialPost(String sourceId, String content, String platform, LocalDate createdDate, long reaction) {
+        super(sourceId, content, platform);
         this.createdDate = createdDate;
         this.reaction = reaction;
     }
 
-    /**
-     * Constructor mặc định
-     */
     public SocialPost() {
         super();
-        this.createdDate = "";
+        this.createdDate = null;
         this.reaction = 0;
     }
-
-    // ========== GETTERS (IMMUTABLE FIELD) + SETTER (MUTABLE FIELD) ==========
-    // createdDate là IMMUTABLE - không thể thay đổi sau khi crawl!
-    // reaction CÓ THỂ thay đổi (nếu cần update thống kê)
 
     public long getReaction() {
         return reaction;
     }
 
-    /**
-     * Setter cho reaction - CHO PHÉP cập nhật thống kê reaction
-     * (Đây là trường CÓ THỂ thay đổi theo thời gian)
-     */
     public void setReaction(long reaction) {
         if (reaction < 0) {
-            throw new IllegalArgumentException("Reaction không được âm!");
+            throw new IllegalArgumentException("Reaction must be non-negative");
         }
         this.reaction = reaction;
     }
 
-    public String getCreatedDate() {
+    public LocalDate getCreatedDate() {
         return createdDate;
     }
 
-    // ========== OVERRIDE ABSTRACT METHODS (POLYMORPHISM) ==========
-
-    /**
-     * OVERRIDE: Trả về createdDate string
-     */
     @Override
     public String getDisplayDate() {
-        return createdDate != null && !createdDate.isEmpty() ? createdDate : "N/A";
+        return createdDate != null ? createdDate.toString() : "N/A";
     }
 
-    /**
-     * OVERRIDE: SocialPost dùng reaction làm engagement score
-     */
     @Override
     public long getEngagementScore() {
         return reaction;
     }
 
-    /**
-     * OVERRIDE: Xuất dữ liệu Social sang CSV format
-     */
     @Override
     public String[] toCsvArray() {
         return new String[] {
@@ -87,10 +59,6 @@ public class SocialPost extends AbstractPost {
         };
     }
 
-    /**
-     * OVERRIDE: Cung cấp CSV Header cho SocialPost (FIX OCP VIOLATION)
-     * POLYMORPHISM: Mỗi loại Post có header riêng
-     */
     @Override
     public String[] getCsvHeader() {
         return HEADER;
@@ -98,7 +66,7 @@ public class SocialPost extends AbstractPost {
 
     @Override
     public String toString() {
-        return String.format("SocialPost[platform=%s, date=%s, reaction=%d]",
-                getPlatform(), getDisplayDate(), reaction);
+        return String.format("SocialPost[platform=%s, sourceId=%s, date=%s, reaction=%d]",
+                getPlatform(), getSourceId(), getDisplayDate(), reaction);
     }
 }

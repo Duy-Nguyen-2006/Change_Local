@@ -2,6 +2,7 @@ package com.crawler.util;
 
 import com.google.gson.*;
 import com.crawler.model.SocialPost;
+import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.ZoneId;
@@ -12,21 +13,14 @@ import java.util.Map;
 
 public class XParser {
 
-    // Example: "Fri Mar 22 22:44:22 +0000 2024"
     private static final DateTimeFormatter TWITTER_DATE_FORMAT =
             DateTimeFormatter.ofPattern("EEE MMM dd HH:mm:ss Z yyyy", Locale.ENGLISH);
 
-    /**
-     * Parse one search-response JSON page into a list of SocialPost.
-     * This version just walks the entire JSON and collects any "legacy"
-     * object that clearly looks like a tweet (has full_text/text).
-     */
     public static List<SocialPost> parseSearchResult(String json) {
         List<SocialPost> posts = new ArrayList<>();
 
         JsonElement root = JsonParser.parseString(json);
 
-        // Some RapidAPI endpoints wrap real payload inside "body"
         if (root.isJsonObject()
                 && root.getAsJsonObject().has("body")
                 && root.getAsJsonObject().get("body").isJsonObject()) {
@@ -37,17 +31,12 @@ public class XParser {
         return posts;
     }
 
-    /**
-     * Depth-first search: whenever we see a JsonObject with field "legacy"
-     * that contains full_text/text, treat it as a tweet.
-     */
     private static void dfsCollectTweets(JsonElement element, List<SocialPost> posts) {
         if (element == null || element.isJsonNull()) return;
 
         if (element.isJsonObject()) {
             JsonObject obj = element.getAsJsonObject();
 
-            // Tweet candidate?
             if (obj.has("legacy") && obj.get("legacy").isJsonObject()) {
                 JsonObject legacy = obj.getAsJsonObject("legacy");
 
@@ -62,7 +51,6 @@ public class XParser {
                 }
             }
 
-            // Recurse on all values
             for (Map.Entry<String, JsonElement> e : obj.entrySet()) {
                 dfsCollectTweets(e.getValue(), posts);
             }
@@ -75,11 +63,7 @@ public class XParser {
         }
     }
 
-    /**
-     * Convert a tweet "legacy" object into our SocialPost {platform, content, createdDate, reaction}.
-     */
     private static SocialPost legacyToPost(JsonObject legacy) {
-        // text
         String text = null;
         if (legacy.has("full_text")) {
             text = legacy.get("full_text").getAsString();
@@ -88,8 +72,7 @@ public class XParser {
         }
         if (text == null || text.isBlank()) return null;
 
-        String createdDate = "";
-        // created_at → yyyy-MM-dd in Asia/Ho_Chi_Minh if possible
+        LocalDate createdDate = null;
         if (legacy.has("created_at")) {
             String createdAtStr = legacy.get("created_at").getAsString();
             try {
@@ -97,11 +80,9 @@ public class XParser {
                         ZonedDateTime.parse(createdAtStr, TWITTER_DATE_FORMAT);
                 createdDate = zdt.withZoneSameInstant(
                                 ZoneId.of("Asia/Ho_Chi_Minh"))
-                        .toLocalDate()
-                        .toString();
-            } catch (Exception e) {
-                // If parsing fails, store raw string
-                createdDate = createdAtStr;
+                        .toLocalDate();
+            } catch (Exception ignored) {
+                createdDate = null;
             }
         }
 
@@ -113,17 +94,16 @@ public class XParser {
                 : 0L;
         long reaction = likes + retweets;
 
-        return new SocialPost(text, "x", createdDate, reaction);
+        String sourceId = "";
+        if (legacy.has("id_str")) {
+            sourceId = legacy.get("id_str").getAsString();
+        } else if (legacy.has("id")) {
+            sourceId = legacy.get("id").getAsString();
+        }
+
+        return new SocialPost(sourceId, text, "x", createdDate, reaction);
     }
 
-    /**
-     * Extract the "bottom" cursor from payload:
-     * {
-     *   "cursor": { "bottom": "...", "top": "..." },
-     *   "result": { ... }
-     * }
-     * (possibly wrapped in "body").
-     */
     public static String extractNextCursor(String json) {
         JsonElement root = JsonParser.parseString(json);
 

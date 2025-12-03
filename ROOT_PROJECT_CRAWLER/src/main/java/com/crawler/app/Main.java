@@ -2,7 +2,6 @@ package com.crawler.app;
 
 import com.crawler.client.*;
 import com.crawler.model.AbstractPost;
-import com.crawler.util.SocialDatabase;
 import com.crawler.util.PostCsvExporter;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -86,8 +85,6 @@ public class Main {
                 displaySamplePosts(results, 2);
 
                 // Lưu vào database - POLYMORPHISM: savePosts() nhận AbstractPost
-                SocialDatabase.savePosts(results);
-
                 // Export to CSV - SRP: Tách logic export ra class riêng
                 String csvFile = crawler.getClass().getSimpleName() + "_results.csv";
                 PostCsvExporter.export(results, csvFile);

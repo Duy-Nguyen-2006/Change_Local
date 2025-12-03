@@ -2,7 +2,6 @@ package com.crawler.client;
 
 import com.crawler.model.SocialPost;
 import com.crawler.util.XParser;
-import com.crawler.util.SocialDatabase;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -175,7 +174,6 @@ public class XSearchClient implements ISearchClient {
             }
 
             System.out.println("Total X posts collected: " + allPosts.size());
-            SocialDatabase.savePosts(allPosts);
 
         } catch (CrawlerException e) {
             System.err.println("Lỗi crawl: " + e.getMessage());

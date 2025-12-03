@@ -4,8 +4,10 @@ import com.crawler.client.CrawlerException;
 import com.crawler.client.ISearchClient;
 import com.crawler.model.AbstractPost;
 import com.crawler.processor.IDataProcessor;
+import com.crawler.processor.NewsFilterProcessor;
 import com.crawler.repository.IPostRepository;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -40,7 +42,7 @@ public class PostService implements IPostService {
 
     private final IPostRepository repository;
     private final ISearchClient crawler;
-    private final IDataProcessor processor;
+    private final List<IDataProcessor> processors;
 
     /**
      * Constructor Injection - DEPENDENCY INJECTION PATTERN
@@ -51,13 +53,23 @@ public class PostService implements IPostService {
      * @param processor Processor để enrich posts (webhook, filtering...)
      */
     public PostService(IPostRepository repository, ISearchClient crawler, IDataProcessor processor) {
-        if (repository == null || crawler == null || processor == null) {
-            throw new IllegalArgumentException("All dependencies (repository, crawler, processor) must be non-null!");
+        this(repository, crawler, List.of(processor));
+    }
+
+    /**
+     * Constructor Injection - CHAIN OF PROCESSORS
+     * @param repository Repository Ž` ¯Ÿ l’øu/load posts
+     * @param crawler Crawler Ž` ¯Ÿ crawl posts m ¯>i
+     * @param processors Danh sA­ch processor (Filter/Webhook/Validation...)
+     */
+    public PostService(IPostRepository repository, ISearchClient crawler, List<IDataProcessor> processors) {
+        if (repository == null || crawler == null || processors == null) {
+            throw new IllegalArgumentException("All dependencies (repository, crawler, processors) must be non-null!");
         }
 
         this.repository = repository;
         this.crawler = crawler;
-        this.processor = processor;
+        this.processors = new ArrayList<>(processors);
     }
 
     /**
@@ -89,13 +101,30 @@ public class PostService implements IPostService {
         List<? extends AbstractPost> rawPosts = crawler.search(province, startDate, endDate);
         crawler.close();
 
-        // 3. Process (Webhook)
-        List<? extends AbstractPost> processedPosts = processor.process(rawPosts);
+        // 3. Process (Filter + enrichment)
+        List<? extends AbstractPost> processedPosts = applyProcessors(rawPosts, startDate, endDate);
 
         // 4. Save Cache
         repository.save(processedPosts, cacheKey);
 
         return processedPosts;
+    }
+
+    private List<? extends AbstractPost> applyProcessors(List<? extends AbstractPost> rawPosts,
+                                                         LocalDate startDate,
+                                                         LocalDate endDate) throws CrawlerException {
+        List<IDataProcessor> pipeline = new ArrayList<>();
+        pipeline.add(new NewsFilterProcessor(startDate, endDate));
+        pipeline.addAll(processors);
+
+        List<? extends AbstractPost> current = rawPosts;
+        for (IDataProcessor processor : pipeline) {
+            if (processor == null) {
+                continue;
+            }
+            current = processor.process(current);
+        }
+        return current;
     }
 
     /**
