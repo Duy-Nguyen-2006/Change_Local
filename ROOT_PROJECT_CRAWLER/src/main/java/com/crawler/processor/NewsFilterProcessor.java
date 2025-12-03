@@ -15,27 +15,17 @@ import java.util.List;
  */
 public class NewsFilterProcessor implements IDataProcessor {
 
-    public static final List<String> DEFAULT_KEYWORDS = List.of(
-            "bAœo", "lc", "l ¯t", "s §­t l ¯Y", "thiA¦n tai", "ng §-p",
-            "m’øa l ¯>n", "m’øa to", "giA'ng", "l ¯`c", "tri ¯?u c’ø ¯?ng"
-    );
-
     private final LocalDate startDate;
     private final LocalDate endDate;
     private final List<String> keywords;
 
-    public NewsFilterProcessor(LocalDate startDate, LocalDate endDate) {
-        this(startDate, endDate, DEFAULT_KEYWORDS);
-    }
-
     public NewsFilterProcessor(LocalDate startDate, LocalDate endDate, List<String> keywords) {
+        if (keywords == null || keywords.isEmpty()) {
+            throw new IllegalArgumentException("Keywords must not be null or empty. Please provide a valid list of keywords.");
+        }
         this.startDate = startDate;
         this.endDate = endDate;
-        if (keywords == null || keywords.isEmpty()) {
-            this.keywords = DEFAULT_KEYWORDS;
-        } else {
-            this.keywords = new ArrayList<>(keywords);
-        }
+        this.keywords = new ArrayList<>(keywords);
     }
 
     @Override

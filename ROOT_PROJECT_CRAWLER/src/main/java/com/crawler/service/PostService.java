@@ -4,7 +4,6 @@ import com.crawler.client.CrawlerException;
 import com.crawler.client.ISearchClient;
 import com.crawler.model.AbstractPost;
 import com.crawler.processor.IDataProcessor;
-import com.crawler.processor.NewsFilterProcessor;
 import com.crawler.repository.IPostRepository;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -113,12 +112,8 @@ public class PostService implements IPostService {
     private List<? extends AbstractPost> applyProcessors(List<? extends AbstractPost> rawPosts,
                                                          LocalDate startDate,
                                                          LocalDate endDate) throws CrawlerException {
-        List<IDataProcessor> pipeline = new ArrayList<>();
-        pipeline.add(new NewsFilterProcessor(startDate, endDate));
-        pipeline.addAll(processors);
-
         List<? extends AbstractPost> current = rawPosts;
-        for (IDataProcessor processor : pipeline) {
+        for (IDataProcessor processor : this.processors) {
             if (processor == null) {
                 continue;
             }
