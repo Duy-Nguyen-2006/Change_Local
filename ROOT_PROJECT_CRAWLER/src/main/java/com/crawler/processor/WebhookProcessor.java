@@ -102,13 +102,17 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
                 if (metadata.has("loai_bai_viet") && !metadata.get("loai_bai_viet").isJsonNull()) {
                     post.setFocus(metadata.get("loai_bai_viet").getAsString());
                 }
+                if (metadata.has("huong_bai_viet") && !metadata.get("huong_bai_viet").isJsonNull()) {
+                    post.setDirection(metadata.get("huong_bai_viet").getAsString());
+                }
 
                 enrichedPosts.add(post);
 
                 System.out.println("  ✓ Enriched: " + post.getPlatform() +
                         " | sentiment=" + post.getSentiment() +
                         " | location=" + post.getLocation() +
-                        " | focus=" + post.getFocus());
+                        " | focus=" + post.getFocus() +
+                        " | direction=" + post.getDirection());
 
             } catch (Exception e) {
                 // Nếu webhook thất bại, vẫn giữ Post (chỉ không có metadata)
@@ -248,8 +252,22 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
         } else if (lowerContent.contains("công nghệ") || lowerContent.contains("ai") ||
                    lowerContent.contains("startup")) {
             metadata.addProperty("loai_bai_viet", "cong_nghe");
+        } else if (lowerContent.contains("cứu hộ") || lowerContent.contains("cứu trợ") ||
+                   lowerContent.contains("giúp đỡ")) {
+            metadata.addProperty("loai_bai_viet", "cuu_ho");
         } else {
             metadata.addProperty("loai_bai_viet", "tong_hop");
+        }
+
+        // Mock huong_bai_viet - Hướng của bài viết
+        if (lowerContent.contains("hỗ trợ") || lowerContent.contains("tán thành") ||
+            lowerContent.contains("đồng ý") || lowerContent.contains("ủng hộ")) {
+            metadata.addProperty("huong_bai_viet", "tuan_theo");
+        } else if (lowerContent.contains("phản đối") || lowerContent.contains("chỉ trích") ||
+                   lowerContent.contains("không đồng ý") || lowerContent.contains("chống lại")) {
+            metadata.addProperty("huong_bai_viet", "phan_doi");
+        } else {
+            metadata.addProperty("huong_bai_viet", "trung_lap");
         }
 
         return metadata;

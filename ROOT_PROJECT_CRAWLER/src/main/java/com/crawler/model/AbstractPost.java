@@ -14,9 +14,10 @@ public abstract class AbstractPost {
     private String platform;
 
     // Webhook metadata - MUTABLE (có thể được cập nhật từ webhook)
-    private String sentiment;  // "positive", "negative", "neutral"
-    private String location;   // Vị trí địa lý được phân tích từ nội dung
-    private String focus;      // Chủ đề chính của bài viết
+    private String sentiment;      // "cam_xuc_bai_viet"
+    private String location;       // "tinh_thanh"
+    private String focus;          // "loai_bai_viet"
+    private String direction;      // "huong_bai_viet"
 
     /**
      * Constructor chung cho lớp con gọi
@@ -72,6 +73,14 @@ public abstract class AbstractPost {
 
     public void setFocus(String focus) {
         this.focus = focus;
+    }
+
+    public String getDirection() {
+        return direction;
+    }
+
+    public void setDirection(String direction) {
+        this.direction = direction;
     }
 
     // ========== PHƯƠNG THỨC TRỪU TƯỢNG (ABSTRACTION) ==========
