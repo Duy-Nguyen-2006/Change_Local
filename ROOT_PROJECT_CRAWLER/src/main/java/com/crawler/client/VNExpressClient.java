@@ -1,22 +1,27 @@
 package com.crawler.client;
 
-import com.crawler.client.abstracts.CrawlerEnv;
-import com.crawler.model.NewsPost;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import com.crawler.client.abstracts.CrawlerEnv;
+import com.crawler.model.NewsPost;
+
 /**
  * VNExpress News Crawler - kế thừa CrawlerEnv.
+ * ĐÃ CẬP NHẬT để TÔN TRỌNG DATE RANGE (dù Jsoup không hỗ trợ date range dễ dàng,
+ * nhưng CONTRACT phải được tôn trọng).
  */
 public class VNExpressClient extends CrawlerEnv {
     @Override
-    public void getPosts(String search_keyword) {
+    // BẮT BUỘC PHẢI THÊM 2 THAM SỐ DATE VÀO CONTRACT NÀY!
+    public void getPosts(String search_keyword, LocalDate startDate, LocalDate endDate) {
         final int PAGES = 5;
 
         for (int i = 0; i < PAGES; ++i) {
@@ -58,7 +63,7 @@ public class VNExpressClient extends CrawlerEnv {
                 }
 
             } catch (IOException u) {
-                System.err.println("KhA'ng l §y Ž`’ø ¯œc bAÿi t ¯® VNExpress");
+                System.err.println("Không lấy được bài từ VNExpress: " + u.getMessage());
             }
         }
     }

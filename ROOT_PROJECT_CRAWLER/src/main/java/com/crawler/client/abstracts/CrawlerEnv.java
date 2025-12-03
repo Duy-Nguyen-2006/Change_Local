@@ -1,13 +1,12 @@
 package com.crawler.client.abstracts;
 
-import com.crawler.client.CrawlerException;
-import com.crawler.client.ISearchClient;
-import com.crawler.model.NewsPost;
-import com.crawler.processor.NewsFilterProcessor;
-import com.crawler.util.PostCsvExporter;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.crawler.client.CrawlerException;
+import com.crawler.client.ISearchClient;
+import com.crawler.model.NewsPost;
 
 /**
  * Lớp trừu tượng cho News Crawlers.
@@ -24,7 +23,10 @@ public abstract class CrawlerEnv implements ISearchClient {
         resultPosts.clear();
     }
 
-    public abstract void getPosts(String title);
+    /**
+     * PHƯƠNG THỨC TRỪU TƯỢNG BẮT BUỘC PHẢI NHẬN ĐẦY ĐỦ DATE ĐỂ THỎA MÃN LSP!
+     */
+    public abstract void getPosts(String title, LocalDate startDate, LocalDate endDate);
 
     public int resultSize() {
         return resultPosts.size();
@@ -38,7 +40,8 @@ public abstract class CrawlerEnv implements ISearchClient {
     public List<NewsPost> search(String query, LocalDate startDate, LocalDate endDate) throws CrawlerException {
         try {
             clearResults();
-            getPosts(query);
+            // TRUYỀN ĐẦY ĐỦ THAM SỐ XUỐNG IMPLEMENTATION CỤ THỂ
+            getPosts(query, startDate, endDate);
             return new ArrayList<>(resultPosts);
         } catch (Exception e) {
             throw new CrawlerException("Lỗi khi crawl news: " + e.getMessage(), e);
@@ -54,19 +57,5 @@ public abstract class CrawlerEnv implements ISearchClient {
     public void close() {
         System.out.println(this.getClass().getSimpleName() + " closed.");
     }
-
-    /**
-     * Legacy method - giữ lại cho backward compatibility.
-     */
-    @Deprecated
-    public void mainCrawl(String title, LocalDate from, LocalDate to, String fileName) {
-        try {
-            clearResults();
-            getPosts(title);
-            List<? extends NewsPost> filtered = new NewsFilterProcessor(from, to).process(resultPosts);
-            PostCsvExporter.export(filtered, fileName);
-        } catch (Exception e) {
-            System.err.println("Lỗi khi mainCrawl: " + e.getMessage());
-        }
-    }
+    
 }

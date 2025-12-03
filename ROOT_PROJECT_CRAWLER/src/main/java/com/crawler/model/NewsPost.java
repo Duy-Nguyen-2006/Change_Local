@@ -16,7 +16,8 @@ public class NewsPost extends AbstractPost {
         super(sourceId, content, platform);
         this.postDate = postDate;
         this.title = title;
-        this.comments = comments;
+        // GỌI SETTER ĐỂ ĐẢM BẢO VALIDATION ĐƯỢC THỰC THI NGAY TRONG CONSTRUCTOR
+        setComments(comments);
     }
 
     public LocalDate getPostDate() {

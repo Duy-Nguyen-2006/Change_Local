@@ -57,9 +57,9 @@ public class PostService implements IPostService {
 
     /**
      * Constructor Injection - CHAIN OF PROCESSORS
-     * @param repository Repository Ž` ¯Ÿ l’øu/load posts
-     * @param crawler Crawler Ž` ¯Ÿ crawl posts m ¯>i
-     * @param processors Danh sA­ch processor (Filter/Webhook/Validation...)
+     * @param repository Repository để lưu/load posts
+     * @param crawler Crawler để crawl posts mới
+     * @param processors Danh sách processor (Filter/Webhook/Validation...)
      */
     public PostService(IPostRepository repository, ISearchClient crawler, List<IDataProcessor> processors) {
         if (repository == null || crawler == null || processors == null) {

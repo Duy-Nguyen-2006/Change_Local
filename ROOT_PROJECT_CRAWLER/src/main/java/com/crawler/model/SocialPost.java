@@ -14,7 +14,8 @@ public class SocialPost extends AbstractPost {
     public SocialPost(String sourceId, String content, String platform, LocalDate createdDate, long reaction) {
         super(sourceId, content, platform);
         this.createdDate = createdDate;
-        this.reaction = reaction;
+        // GỌI SETTER ĐỂ ĐẢM BẢO VALIDATION ĐƯỢC THỰC THI NGAY TRONG CONSTRUCTOR
+        setReaction(reaction);
     }
 
     public long getReaction() {
