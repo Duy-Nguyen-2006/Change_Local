@@ -1,34 +1,36 @@
 package com.crawler.util;
 
-import com.opencsv.CSVWriter;
-import com.crawler.model.Post;
-import java.io.FileWriter;
-import java.io.IOException;
+import com.crawler.client.ISearchClient;
+import com.crawler.client.CrawlerException;
+import com.crawler.model.AbstractPost;
+import com.crawler.model.NewsPost;
 import java.time.LocalDate;
 import java.util.*;
 
 /**
- * Lớp trừu tượng để lấy dữ liệu.
+ * Lớp trừu tượng cho News Crawlers
+ * IMPLEMENTS ISearchClient để đảm bảo LSP (Liskov Substitution Principle)
+ *
+ * Bây giờ CrawlerEnv CÓ THỂ THAY THẾ cho bất kỳ ISearchClient nào!
  */
-
-public abstract class CrawlerEnv {
-    private ArrayList<Post> resultPosts = new ArrayList<Post>();
+public abstract class CrawlerEnv implements ISearchClient {
+    private ArrayList<NewsPost> resultPosts = new ArrayList<NewsPost>();
 
     public static final String[] KEYWORDS = {"bão", "lũ", "lụt", "sạt lở", "thiên tai", "ngập",
     "mưa lớn", "mưa to", "giông", "lốc", "triều cường"};
 
     /**
      * Lọc bài viết theo ngày.
-     * Hàm a.compareTo(b) > 0 khi ngày a sau ngày b, nhỏ hơn 0 nếu ngược lại.
      */
+    public ArrayList<NewsPost> filterPostsDate(ArrayList<NewsPost> posts, LocalDate from, LocalDate to) {
+        ArrayList<NewsPost> fDate = new ArrayList<NewsPost>();
 
-    public ArrayList<Post> filterPostsDate(ArrayList<Post> posts, LocalDate from, LocalDate to) {
-        ArrayList<Post> fDate = new ArrayList<Post>();
-
-        if (posts.size() != 0) for (Post post: posts) {
+        if (posts.size() != 0) for (NewsPost post: posts) {
            if (post.getPostDate() == null) continue;
 
-           if (post.getPostDate().compareTo(from) >= 0 && 0 >= post.getPostDate().compareTo(to)) fDate.add(post);
+           if (post.getPostDate().compareTo(from) >= 0 && 0 >= post.getPostDate().compareTo(to)) {
+               fDate.add(post);
+           }
         }
         return fDate;
     }
@@ -36,11 +38,10 @@ public abstract class CrawlerEnv {
     /**
      * Lọc bài viết theo từ khoá.
      */
+    public ArrayList<NewsPost> filterPostsKeyword(ArrayList<NewsPost> posts) {
+        ArrayList<NewsPost> fKey = new ArrayList<NewsPost>();
 
-    public ArrayList<Post> filterPostsKeyword(ArrayList<Post> posts) {
-        ArrayList<Post> fKey = new ArrayList<Post>();
-
-        if(posts.size() != 0) for (Post post: posts) {
+        if(posts.size() != 0) for (NewsPost post: posts) {
             boolean post_has = false;
 
             String combiner = post.getTitle() + " " + post.getContent();
@@ -54,55 +55,108 @@ public abstract class CrawlerEnv {
         }
         return fKey;
     }
+
     /**
      * Thêm bài viết vào kết quả ban đầu.
      */
-    public void addPost(Post sample) {
+    protected void addPost(NewsPost sample) {
         resultPosts.add(sample);
     }
+
     /**
-     * Hàm tổng quát để cào dữ liệu, khi muốn cào từ Báo Thanh niên cũng không vấn đề gì.
-     * @param title
+     * Clear kết quả cũ
+     */
+    protected void clearResults() {
+        resultPosts.clear();
+    }
+
+    /**
+     * Hàm trừu tượng để lớp con implement
      */
     public abstract void getPosts(String title);
 
     /**
-     * Hàm để tạo file .csv sau khi lọc bài viết xong
-     * @param file_name
-     */
-    public void extractToCSV(String file_name) {
-        try (CSVWriter pen = new CSVWriter(new FileWriter(file_name))) {
-            pen.writeNext(Post.HEADER);
-            for (Post result: resultPosts) pen.writeNext(result.csvParse());
-
-        } catch (IOException e) {
-            System.err.println("Không viết được file CSV");
-        }
-    }
-    /**
      * Lấy số lượng bài
-     * @return Số lượng bài trong size;
      */
-
     public int resultSize() {
         return resultPosts.size();
     }
+
     /**
-     * Hàm xử lý các việc trên.
-     * Chú ý lấy ngày to sau ngày from.
-     * @param title
-     * @param from
-     * @param to
-     * @param file_name
+     * Lấy danh sách kết quả
      */
-    public void mainCrawl(String title, LocalDate from, LocalDate to, String file_name) {
-        getPosts(title);
-
-        resultPosts = filterPostsDate(resultPosts, from, to);
-
-        resultPosts = filterPostsKeyword(resultPosts);
-
-        extractToCSV(file_name);
+    public ArrayList<NewsPost> getResults() {
+        return new ArrayList<>(resultPosts);
     }
 
+    // ========== IMPLEMENT ISearchClient (FIX LSP VIOLATION) ==========
+
+    /**
+     * IMPLEMENT ISearchClient.search()
+     * Đây là phương thức bắt buộc để News Crawler tương thích với Social Crawler
+     */
+    @Override
+    public List<NewsPost> search(String query, int limit) throws CrawlerException {
+        try {
+            clearResults();
+
+            // Crawl với date range (30 ngày gần nhất)
+            LocalDate fromDate = LocalDate.now().minusDays(30);
+            LocalDate toDate = LocalDate.now();
+
+            // Gọi abstract method getPosts (lớp con implement)
+            getPosts(query);
+
+            // Filter theo date và keyword
+            resultPosts = filterPostsDate(resultPosts, fromDate, toDate);
+            resultPosts = filterPostsKeyword(resultPosts);
+
+            // Limit kết quả
+            if (limit > 0 && resultPosts.size() > limit) {
+                resultPosts = new ArrayList<>(resultPosts.subList(0, limit));
+            }
+
+            return new ArrayList<>(resultPosts);
+
+        } catch (Exception e) {
+            throw new CrawlerException("Lỗi khi crawl news: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * IMPLEMENT ISearchClient.initialize()
+     * News crawlers không cần khởi tạo gì đặc biệt
+     */
+    @Override
+    public void initialize() {
+        System.out.println(this.getClass().getSimpleName() + " initialized.");
+    }
+
+    /**
+     * IMPLEMENT ISearchClient.close()
+     * News crawlers không cần cleanup gì đặc biệt
+     */
+    @Override
+    public void close() {
+        System.out.println(this.getClass().getSimpleName() + " closed.");
+    }
+
+    /**
+     * Legacy method - giữ lại để backward compatibility
+     * Nhưng bây giờ recommend dùng search() thay thế
+     */
+    @Deprecated
+    public void mainCrawl(String title, LocalDate from, LocalDate to, String fileName) {
+        try {
+            clearResults();
+            getPosts(title);
+            resultPosts = filterPostsDate(resultPosts, from, to);
+            resultPosts = filterPostsKeyword(resultPosts);
+
+            // Sử dụng PostCsvExporter thay vì tự viết CSV
+            PostCsvExporter.export(resultPosts, fileName);
+        } catch (Exception e) {
+            System.err.println("Lỗi khi mainCrawl: " + e.getMessage());
+        }
+    }
 }

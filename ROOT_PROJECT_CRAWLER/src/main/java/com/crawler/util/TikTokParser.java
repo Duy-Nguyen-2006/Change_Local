@@ -1,7 +1,7 @@
 package com.crawler.util;
 
 import com.google.gson.*;
-import com.crawler.model.Post;
+import com.crawler.model.SocialPost;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -10,11 +10,11 @@ import java.util.List;
 public class TikTokParser {
 
     /**
-     * Parse one search-response JSON page into a list of Post objects.
+     * Parse one search-response JSON page into a list of SocialPost objects.
      * Only keeps: platform, content, createdDate, reaction.
      */
-    public static List<Post> parseSearchResult(String json) {
-        List<Post> list = new ArrayList<>();
+    public static List<SocialPost> parseSearchResult(String json) {
+        List<SocialPost> list = new ArrayList<>();
 
         JsonObject root = JsonParser.parseString(json).getAsJsonObject();
         JsonObject data = root.getAsJsonObject("data");
@@ -42,7 +42,7 @@ public class TikTokParser {
                     .toLocalDate()
                     .toString();
 
-            Post item = new Post("tiktok", content, createdDate, reaction);
+            SocialPost item = new SocialPost(content, "tiktok", createdDate, reaction);
             list.add(item);
         }
         return list;

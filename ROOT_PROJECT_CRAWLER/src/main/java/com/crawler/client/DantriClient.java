@@ -1,6 +1,6 @@
 package com.crawler.client;
 
-import com.crawler.model.Post;
+import com.crawler.model.NewsPost;
 import com.crawler.util.CrawlerEnv;
 import java.io.IOException;
 import java.time.*;
@@ -9,8 +9,9 @@ import org.jsoup.nodes.*;
 import org.jsoup.select.Elements;
 
 /**
- * Dantri News Crawler - Kế thừa CrawlerEnv
+ * Dantri News Crawler - Kế thừa CrawlerEnv (IMPLEMENTS ISearchClient qua CrawlerEnv)
  * ÁP DỤNG INHERITANCE và POLYMORPHISM
+ * Return type: List<NewsPost> (áp dụng INHERITANCE)
  */
 public class DantriClient extends CrawlerEnv {
     /**
@@ -55,8 +56,14 @@ public class DantriClient extends CrawlerEnv {
                         comments = 0;
                     }
 
-                    addPost(new Post((date == "") ? LocalDate.now() : dateExtract(date),
-                            title, excerpt, "Dân trí", comments));
+                    // SỬ DỤNG NewsPost thay vì Post
+                    addPost(new NewsPost(
+                            (date == "") ? LocalDate.now() : dateExtract(date),
+                            title,
+                            excerpt,
+                            "Dân trí",
+                            comments
+                    ));
 
                     System.out.println("Dantri: Crawled 1 post");
                 }

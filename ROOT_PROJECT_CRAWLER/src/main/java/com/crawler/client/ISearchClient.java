@@ -1,6 +1,6 @@
 package com.crawler.client;
 
-import com.crawler.model.Post;
+import com.crawler.model.AbstractPost;
 import java.util.List;
 
 /**
@@ -9,15 +9,17 @@ import java.util.List;
  * ABSTRACTION - Interface định nghĩa hành vi chung cho tất cả các crawler client
  * OCP (Open/Closed Principle) - Mở cho mở rộng, đóng cho sửa đổi
  * DIP (Dependency Inversion Principle) - Phụ thuộc vào abstraction, không phụ thuộc vào concrete class
+ * LSP (Liskov Substitution Principle) - Tất cả crawler đều có thể thay thế cho nhau
  */
 public interface ISearchClient {
     /**
      * Mọi client tìm kiếm phải có phương thức search.
      * @param query Từ khóa tìm kiếm
      * @param limit Số lượng kết quả tối đa
-     * @return Danh sách các bài viết
+     * @return Danh sách các bài viết (NewsPost hoặc SocialPost)
+     * @throws CrawlerException Nếu có lỗi khi crawl
      */
-    List<Post> search(String query, int limit) throws Exception;
+    List<? extends AbstractPost> search(String query, int limit) throws CrawlerException;
 
     /**
      * Mọi client phải có phương thức để khởi tạo driver/kết nối.

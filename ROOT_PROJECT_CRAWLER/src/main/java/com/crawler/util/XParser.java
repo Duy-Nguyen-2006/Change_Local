@@ -1,7 +1,7 @@
 package com.crawler.util;
 
 import com.google.gson.*;
-import com.crawler.model.Post;
+import com.crawler.model.SocialPost;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.ZoneId;
@@ -17,12 +17,12 @@ public class XParser {
             DateTimeFormatter.ofPattern("EEE MMM dd HH:mm:ss Z yyyy", Locale.ENGLISH);
 
     /**
-     * Parse one search-response JSON page into a list of Post.
+     * Parse one search-response JSON page into a list of SocialPost.
      * This version just walks the entire JSON and collects any "legacy"
      * object that clearly looks like a tweet (has full_text/text).
      */
-    public static List<Post> parseSearchResult(String json) {
-        List<Post> posts = new ArrayList<>();
+    public static List<SocialPost> parseSearchResult(String json) {
+        List<SocialPost> posts = new ArrayList<>();
 
         JsonElement root = JsonParser.parseString(json);
 
@@ -41,7 +41,7 @@ public class XParser {
      * Depth-first search: whenever we see a JsonObject with field "legacy"
      * that contains full_text/text, treat it as a tweet.
      */
-    private static void dfsCollectTweets(JsonElement element, List<Post> posts) {
+    private static void dfsCollectTweets(JsonElement element, List<SocialPost> posts) {
         if (element == null || element.isJsonNull()) return;
 
         if (element.isJsonObject()) {
@@ -55,7 +55,7 @@ public class XParser {
                         legacy.has("full_text") || legacy.has("text");
 
                 if (hasText) {
-                    Post p = legacyToPost(legacy);
+                    SocialPost p = legacyToPost(legacy);
                     if (p != null) {
                         posts.add(p);
                     }
@@ -76,9 +76,9 @@ public class XParser {
     }
 
     /**
-     * Convert a tweet "legacy" object into our Post {platform, content, createdDate, reaction}.
+     * Convert a tweet "legacy" object into our SocialPost {platform, content, createdDate, reaction}.
      */
-    private static Post legacyToPost(JsonObject legacy) {
+    private static SocialPost legacyToPost(JsonObject legacy) {
         // text
         String text = null;
         if (legacy.has("full_text")) {
@@ -113,7 +113,7 @@ public class XParser {
                 : 0L;
         long reaction = likes + retweets;
 
-        return new Post("x", text, createdDate, reaction);
+        return new SocialPost(text, "x", createdDate, reaction);
     }
 
     /**
