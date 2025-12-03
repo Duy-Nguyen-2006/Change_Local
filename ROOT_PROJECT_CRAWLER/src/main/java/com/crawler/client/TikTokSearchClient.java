@@ -9,7 +9,6 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import com.crawler.model.SocialPost;
@@ -19,6 +18,8 @@ import com.crawler.util.TikTokParser;
  * TikTok Search Client - IMPLEMENTS ISearchClient
  * ÁP DỤNG POLYMORPHISM và ABSTRACTION
  * Return type: List<SocialPost> (áp dụng INHERITANCE)
+ * ĐÃ DỌN DẸP LOGIC ỨNG DỤNG (main, crawlAndSave) RA KHỎI TẦNG CLIENT (SRP)
+ * ĐÃ CHUYỂN UTILITY (parseKeywords) SANG PACKAGE UTIL (SRP)
  */
 public class TikTokSearchClient implements ISearchClient {
 
@@ -136,17 +137,5 @@ public class TikTokSearchClient implements ISearchClient {
 
     private static String urlEncode(String s) {
         return URLEncoder.encode(s, StandardCharsets.UTF_8);
-    }
-
-    /**
-     * Parse a comma-separated keyword string into a list.
-     * GIỮ LẠI VÌ NÓ LÀ HÀM UTILITY, DÙ NÓ NÊN Ở PACKAGE UTILITY.
-     */
-    public static List<String> parseKeywords(String raw) {
-        if (raw == null || raw.isBlank()) return List.of();
-        return Arrays.stream(raw.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .toList();
     }
 }
