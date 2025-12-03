@@ -37,31 +37,26 @@ public class NewsPost extends AbstractPost {
         this.comments = 0;
     }
 
-    // ========== GETTERS/SETTERS (ENCAPSULATION) ==========
+    // ========== GETTERS (IMMUTABLE FIELDS) + SETTER (MUTABLE FIELD) ==========
+    // postDate và title là IMMUTABLE - không thể thay đổi sau khi crawl!
+    // comments CÓ THỂ thay đổi (nếu cần update thống kê)
 
     public LocalDate getPostDate() {
         return postDate;
-    }
-
-    public void setPostDate(LocalDate postDate) {
-        this.postDate = postDate;
     }
 
     public String getTitle() {
         return title;
     }
 
-    public void setTitle(String title) {
-        if (title == null || title.trim().isEmpty()) {
-            throw new IllegalArgumentException("Title không được rỗng!");
-        }
-        this.title = title;
-    }
-
     public int getComments() {
         return comments;
     }
 
+    /**
+     * Setter cho comments - CHO PHÉP cập nhật thống kê comments
+     * (Đây là trường CÓ THỂ thay đổi theo thời gian)
+     */
     public void setComments(int comments) {
         if (comments < 0) {
             throw new IllegalArgumentException("Comments không được âm!");
@@ -100,6 +95,15 @@ public class NewsPost extends AbstractPost {
             Integer.toString(comments),
             Long.toString(getEngagementScore())
         };
+    }
+
+    /**
+     * OVERRIDE: Cung cấp CSV Header cho NewsPost (FIX OCP VIOLATION)
+     * POLYMORPHISM: Mỗi loại Post có header riêng
+     */
+    @Override
+    public String[] getCsvHeader() {
+        return HEADER;
     }
 
     @Override

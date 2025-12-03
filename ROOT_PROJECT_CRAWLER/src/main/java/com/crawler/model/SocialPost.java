@@ -32,12 +32,18 @@ public class SocialPost extends AbstractPost {
         this.reaction = 0;
     }
 
-    // ========== GETTERS/SETTERS (ENCAPSULATION) ==========
+    // ========== GETTERS (IMMUTABLE FIELD) + SETTER (MUTABLE FIELD) ==========
+    // createdDate là IMMUTABLE - không thể thay đổi sau khi crawl!
+    // reaction CÓ THỂ thay đổi (nếu cần update thống kê)
 
     public long getReaction() {
         return reaction;
     }
 
+    /**
+     * Setter cho reaction - CHO PHÉP cập nhật thống kê reaction
+     * (Đây là trường CÓ THỂ thay đổi theo thời gian)
+     */
     public void setReaction(long reaction) {
         if (reaction < 0) {
             throw new IllegalArgumentException("Reaction không được âm!");
@@ -47,10 +53,6 @@ public class SocialPost extends AbstractPost {
 
     public String getCreatedDate() {
         return createdDate;
-    }
-
-    public void setCreatedDate(String createdDate) {
-        this.createdDate = createdDate;
     }
 
     // ========== OVERRIDE ABSTRACT METHODS (POLYMORPHISM) ==========
@@ -83,6 +85,15 @@ public class SocialPost extends AbstractPost {
             Long.toString(reaction),
             Long.toString(getEngagementScore())
         };
+    }
+
+    /**
+     * OVERRIDE: Cung cấp CSV Header cho SocialPost (FIX OCP VIOLATION)
+     * POLYMORPHISM: Mỗi loại Post có header riêng
+     */
+    @Override
+    public String[] getCsvHeader() {
+        return HEADER;
     }
 
     @Override

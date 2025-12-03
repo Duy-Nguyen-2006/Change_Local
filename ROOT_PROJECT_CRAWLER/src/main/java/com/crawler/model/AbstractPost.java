@@ -31,28 +31,15 @@ public abstract class AbstractPost {
         this.platform = "";
     }
 
-    // ========== GETTERS/SETTERS (ENCAPSULATION) ==========
+    // ========== GETTERS ONLY - NO SETTERS (DATA INTEGRITY) ==========
+    // Content và Platform là IMMUTABLE - không thể thay đổi sau khi tạo!
 
     public String getContent() {
         return content;
     }
 
-    public void setContent(String content) {
-        if (content == null || content.trim().isEmpty()) {
-            throw new IllegalArgumentException("Content không được rỗng!");
-        }
-        this.content = content;
-    }
-
     public String getPlatform() {
         return platform;
-    }
-
-    public void setPlatform(String platform) {
-        if (platform == null || platform.trim().isEmpty()) {
-            throw new IllegalArgumentException("Platform không được rỗng!");
-        }
-        this.platform = platform;
     }
 
     // ========== PHƯƠNG THỨC TRỪU TƯỢNG (ABSTRACTION) ==========
@@ -77,4 +64,12 @@ public abstract class AbstractPost {
      * @return Mảng String chứa dữ liệu
      */
     public abstract String[] toCsvArray();
+
+    /**
+     * BẮT BUỘC lớp con cung cấp header riêng cho việc Export
+     * (Loại bỏ nhu cầu sử dụng instanceof trong Exporter - FIX OCP)
+     * POLYMORPHISM: Mỗi loại Post có header khác nhau
+     * @return CSV Header array
+     */
+    public abstract String[] getCsvHeader();
 }
