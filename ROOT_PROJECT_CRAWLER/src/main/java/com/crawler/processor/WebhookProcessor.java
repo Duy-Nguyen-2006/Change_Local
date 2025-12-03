@@ -219,13 +219,11 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
         // Mock sentiment - Dựa vào từ khóa cảm xúc
         String lowerContent = content.toLowerCase();
         if (lowerContent.contains("tốt") || lowerContent.contains("thành công") ||
-            lowerContent.contains("tăng") || lowerContent.contains("phát triển")) {
+            lowerContent.contains("tăng") || lowerContent.contains("phát triển") ||
+            lowerContent.contains("ủng hộ") || lowerContent.contains("hỗ trợ thành công")) {
             metadata.addProperty("cam_xuc_bai_viet", "tich_cuc");
-        } else if (lowerContent.contains("xấu") || lowerContent.contains("thất bại") ||
-                   lowerContent.contains("giảm") || lowerContent.contains("khủng hoảng")) {
-            metadata.addProperty("cam_xuc_bai_viet", "tieu_cuc");
         } else {
-            metadata.addProperty("cam_xuc_bai_viet", "trung_lap");
+            metadata.addProperty("cam_xuc_bai_viet", "tieu_cuc");
         }
 
         // Mock location - Dựa vào tên địa danh
@@ -240,35 +238,21 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
             metadata.addProperty("tinh_thanh", "khong_xac_dinh");
         }
 
-        // Mock loai_bai_viet - Dựa vào chủ đề
-        if (lowerContent.contains("chính trị") || lowerContent.contains("chính phủ") ||
-            lowerContent.contains("bầu cử")) {
-            metadata.addProperty("loai_bai_viet", "chinh_tri");
-        } else if (lowerContent.contains("kinh tế") || lowerContent.contains("doanh nghiệp") ||
-                   lowerContent.contains("thị trường")) {
-            metadata.addProperty("loai_bai_viet", "kinh_te");
-        } else if (lowerContent.contains("thể thao") || lowerContent.contains("bóng đá")) {
-            metadata.addProperty("loai_bai_viet", "the_thao");
-        } else if (lowerContent.contains("công nghệ") || lowerContent.contains("ai") ||
-                   lowerContent.contains("startup")) {
-            metadata.addProperty("loai_bai_viet", "cong_nghe");
-        } else if (lowerContent.contains("cứu hộ") || lowerContent.contains("cứu trợ") ||
-                   lowerContent.contains("giúp đỡ")) {
+        // Mock loai_bai_viet - Phân loại theo system prompt
+        if (lowerContent.contains("cứu hộ") || lowerContent.contains("cứu trợ") ||
+            lowerContent.contains("giúp đỡ") || lowerContent.contains("hỗ trợ") ||
+            lowerContent.contains("hỗ trợ nhân dân")) {
             metadata.addProperty("loai_bai_viet", "cuu_ho");
+        } else if (lowerContent.contains("thiệt hại") || lowerContent.contains("mất mát") ||
+                   lowerContent.contains("tai nạn") || lowerContent.contains("hư hỏng") ||
+                   lowerContent.contains("tử vong") || lowerContent.contains("bị thương")) {
+            metadata.addProperty("loai_bai_viet", "thiet_hai");
         } else {
-            metadata.addProperty("loai_bai_viet", "tong_hop");
+            metadata.addProperty("loai_bai_viet", "");
         }
 
-        // Mock huong_bai_viet - Hướng của bài viết
-        if (lowerContent.contains("hỗ trợ") || lowerContent.contains("tán thành") ||
-            lowerContent.contains("đồng ý") || lowerContent.contains("ủng hộ")) {
-            metadata.addProperty("huong_bai_viet", "tuan_theo");
-        } else if (lowerContent.contains("phản đối") || lowerContent.contains("chỉ trích") ||
-                   lowerContent.contains("không đồng ý") || lowerContent.contains("chống lại")) {
-            metadata.addProperty("huong_bai_viet", "phan_doi");
-        } else {
-            metadata.addProperty("huong_bai_viet", "trung_lap");
-        }
+        // Mock huong_bai_viet - Để trống theo system prompt (chỉ cần 4 trường cơ bản)
+        metadata.addProperty("huong_bai_viet", "");
 
         return metadata;
     }
