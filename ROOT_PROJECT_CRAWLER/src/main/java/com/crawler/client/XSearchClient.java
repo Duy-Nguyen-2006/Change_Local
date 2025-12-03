@@ -144,6 +144,7 @@ public class XSearchClient implements ISearchClient {
 
     /**
      * Parse comma-separated keywords from user input.
+     * GIỮ LẠI VÌ NÓ LÀ HÀM UTILITY, DÙ NÓ NÊN Ở PACKAGE UTILITY.
      */
     public static List<String> parseKeywords(String raw) {
         if (raw == null || raw.isBlank()) return List.of();

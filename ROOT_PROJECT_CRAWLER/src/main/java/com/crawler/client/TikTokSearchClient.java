@@ -1,7 +1,5 @@
 package com.crawler.client;
 
-import com.crawler.model.SocialPost;
-import com.crawler.util.TikTokParser;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -13,6 +11,9 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import com.crawler.model.SocialPost;
+import com.crawler.util.TikTokParser;
 
 /**
  * TikTok Search Client - IMPLEMENTS ISearchClient
@@ -139,6 +140,7 @@ public class TikTokSearchClient implements ISearchClient {
 
     /**
      * Parse a comma-separated keyword string into a list.
+     * GIỮ LẠI VÌ NÓ LÀ HÀM UTILITY, DÙ NÓ NÊN Ở PACKAGE UTILITY.
      */
     public static List<String> parseKeywords(String raw) {
         if (raw == null || raw.isBlank()) return List.of();
@@ -146,53 +148,5 @@ public class TikTokSearchClient implements ISearchClient {
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .toList();
-    }
-
-    /**
-     * Crawl TikTok for the given keywords and save all posts into SQLite.
-     */
-    public static void crawlAndSave(List<String> keywords) {
-        if (keywords == null || keywords.isEmpty()) {
-            System.out.println("No keywords provided.");
-            return;
-        }
-
-        // SỬ DỤNG POLYMORPHISM - Upcasting to interface
-        ISearchClient client = new TikTokSearchClient();
-        client.initialize();
-
-        List<SocialPost> allVideos = new ArrayList<>();
-
-        try {
-            for (String keyword : keywords) {
-                List<SocialPost> results = (List<SocialPost>) client.search(keyword, null, null);
-                allVideos.addAll(results);
-            }
-
-            System.out.println("Total videos collected: " + allVideos.size());
-
-        } catch (CrawlerException e) {
-            System.err.println("Lỗi crawl: " + e.getMessage());
-            e.printStackTrace();
-        } finally {
-            client.close();
-        }
-    }
-
-    /**
-     * Simple demo main
-     */
-    public static void main(String[] args) {
-        String raw;
-        if (args.length > 0) {
-            raw = args[0];
-        } else {
-            raw = "bão lũ, lũ lụt, mưa lũ";
-        }
-
-        List<String> keywords = parseKeywords(raw);
-        System.out.println("Parsed keywords: " + keywords);
-
-        crawlAndSave(keywords);
     }
 }

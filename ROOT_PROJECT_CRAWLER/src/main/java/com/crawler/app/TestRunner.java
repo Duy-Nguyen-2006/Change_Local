@@ -1,8 +1,12 @@
 package com.crawler.app;
 
+import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List; // CHỌN CLIENT BÁO CHÍ ĐỂ TEST
+
 import com.crawler.client.CrawlerException;
 import com.crawler.client.ISearchClient;
-import com.crawler.client.VNExpressClient; // CHỌN CLIENT BÁO CHÍ ĐỂ TEST
+import com.crawler.client.VNExpressClient;
 import com.crawler.model.AbstractPost;
 import com.crawler.processor.IDataProcessor;
 import com.crawler.processor.NewsFilterProcessor;
@@ -12,15 +16,12 @@ import com.crawler.repository.SQLitePostRepository;
 import com.crawler.service.IPostService;
 import com.crawler.service.PostService;
 
-import java.time.LocalDate;
-import java.util.Arrays;
-import java.util.List;
-
 public class TestRunner {
 
     public static void main(String[] args) {
         // ========== 1. INPUT CỦA MÀY ==========
-        String province = "Hà Nội";
+        // ĐỔI TỪ province thành keyword để đồng bộ với IPostService và PostService
+        String keyword = "bão lũ"; // Dùng keyword liên quan đến bộ lọc
         LocalDate startDate = LocalDate.of(2025, 11, 1);
         LocalDate endDate = LocalDate.of(2025, 12, 1);
 
@@ -55,10 +56,11 @@ public class TestRunner {
             IPostService service = new PostService(repository, newsClient, Arrays.asList(newsFilter, webhookEnricher));
 
             // ========== 3. GỌI LOGIC NGHIỆP VỤ (SERVICE CALL) ==========
-            System.out.println("\n[GỌI SERVICE] province=" + province);
+            // ĐÃ SỬA: DÙNG KEYWORD
+            System.out.println("\n[GỌI SERVICE] keyword=" + keyword);
 
             // POLYMORPHISM: Hàm này sẽ tự động gọi Crawl/Webhook nếu chưa có cache
-            List<? extends AbstractPost> results = service.getPosts(province, startDate, endDate);
+            List<? extends AbstractPost> results = service.getPosts(keyword, startDate, endDate);
 
             // ========== 4. KIỂM TRA KẾT QUẢ XỬ LÝ ==========
             System.out.println("\n--- KẾT QUẢ CRAWL VÀ XỬ LÝ (POLYMORPHISM) ---");
