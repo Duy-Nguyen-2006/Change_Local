@@ -1,6 +1,7 @@
 package com.crawler.client;
 
 import com.crawler.model.AbstractPost;
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -15,11 +16,12 @@ public interface ISearchClient {
     /**
      * Mọi client tìm kiếm phải có phương thức search.
      * @param query Từ khóa tìm kiếm
-     * @param limit Số lượng kết quả tối đa
+     * @param startDate Ngày bắt đầu lọc
+     * @param endDate Ngày kết thúc lọc
      * @return Danh sách các bài viết (NewsPost hoặc SocialPost)
      * @throws CrawlerException Nếu có lỗi khi crawl
      */
-    List<? extends AbstractPost> search(String query, int limit) throws CrawlerException;
+    List<? extends AbstractPost> search(String query, LocalDate startDate, LocalDate endDate) throws CrawlerException;
 
     /**
      * Mọi client phải có phương thức để khởi tạo driver/kết nối.

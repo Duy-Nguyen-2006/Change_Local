@@ -4,6 +4,7 @@ import com.crawler.client.*;
 import com.crawler.model.AbstractPost;
 import com.crawler.util.SocialDatabase;
 import com.crawler.util.PostCsvExporter;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -57,10 +58,11 @@ public class Main {
         allCrawlers.add(new DantriClient());       // News (IMPLEMENT qua CrawlerEnv)
 
         String keyword = "bão lũ";
-        int limit = 5; // Giảm số lượng để demo nhanh
+        LocalDate startDate = LocalDate.now().minusDays(30);
+        LocalDate endDate = LocalDate.now();
 
         System.out.println("Từ khóa tìm kiếm: \"" + keyword + "\"");
-        System.out.println("Giới hạn kết quả: " + limit + " posts/crawler\n");
+        System.out.println("Khoảng thời gian: " + startDate + " → " + endDate + "\n");
         System.out.println("═══════════════════════════════════════════════════\n");
 
         // ========== CHỈ CÓ MỘT VÒNG LẶP CHO TẤT CẢ CRAWLER ==========
@@ -76,7 +78,7 @@ public class Main {
 
                 // POLYMORPHISM - search() trả về NewsPost hoặc SocialPost
                 // Nhưng cả hai đều là AbstractPost!
-                List<? extends AbstractPost> results = crawler.search(keyword, limit);
+                List<? extends AbstractPost> results = crawler.search(keyword, startDate, endDate);
 
                 System.out.println("✓ Tìm thấy " + results.size() + " bài viết");
 

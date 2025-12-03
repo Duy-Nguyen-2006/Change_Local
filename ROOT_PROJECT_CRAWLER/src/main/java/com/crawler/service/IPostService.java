@@ -2,6 +2,7 @@ package com.crawler.service;
 
 import com.crawler.client.CrawlerException;
 import com.crawler.model.AbstractPost;
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -31,15 +32,16 @@ public interface IPostService {
      * 1. Check repository.isCached(keyword)
      * 2. Nếu cached → return repository.load(keyword)
      * 3. Nếu không:
-     *    a. crawler.search(keyword, limit)
+     *    a. crawler.search(keyword, startDate, endDate)
      *    b. processor.process(rawPosts)  // Gọi webhook để lấy metadata
      *    c. repository.save(enrichedPosts, keyword)
      *    d. return enrichedPosts
      *
      * @param keyword Từ khóa tìm kiếm
-     * @param limit Số lượng bài viết tối đa
+     * @param startDate Ngày bắt đầu lọc
+     * @param endDate Ngày kết thúc lọc
      * @return Danh sách bài viết (từ cache hoặc crawl mới)
      * @throws CrawlerException Nếu crawl hoặc xử lý thất bại
      */
-    List<? extends AbstractPost> getPosts(String keyword, int limit) throws CrawlerException;
+    List<? extends AbstractPost> getPosts(String keyword, LocalDate startDate, LocalDate endDate) throws CrawlerException;
 }

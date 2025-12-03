@@ -10,6 +10,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -22,6 +23,7 @@ import java.util.List;
 public class TikTokSearchClient implements ISearchClient {
 
     // ENCAPSULATION - Đóng gói các thuộc tính private
+    private static final int DEFAULT_LIMIT = 120;
     private static final String RAPIDAPI_KEY = "84fd34ba1cmsh4264611a2a81c26p14f915jsn4b51787a5eb1";
     private static final String HOST = "tiktok-scraper7.p.rapidapi.com";
     private HttpClient httpClient;
@@ -47,12 +49,11 @@ public class TikTokSearchClient implements ISearchClient {
     /**
      * Tìm kiếm TikTok videos - IMPLEMENTS interface method
      * @param query Từ khóa tìm kiếm
-     * @param limit Số lượng video tối đa
      * @return Danh sách SocialPost
      * @throws CrawlerException Nếu có lỗi khi crawl
      */
     @Override
-    public List<SocialPost> search(String query, int limit) throws CrawlerException {
+    public List<SocialPost> search(String query, LocalDate startDate, LocalDate endDate) throws CrawlerException {
         try {
             if (httpClient == null) {
                 initialize();
@@ -62,6 +63,7 @@ public class TikTokSearchClient implements ISearchClient {
             int pageSize = 30;
             int cursor = 0;
             int collected = 0;
+            int limit = DEFAULT_LIMIT;
 
             List<SocialPost> allVideos = new ArrayList<>();
 
@@ -160,12 +162,11 @@ public class TikTokSearchClient implements ISearchClient {
         ISearchClient client = new TikTokSearchClient();
         client.initialize();
 
-        int targetPerKeyword = 120;
         List<SocialPost> allVideos = new ArrayList<>();
 
         try {
             for (String keyword : keywords) {
-                List<SocialPost> results = (List<SocialPost>) client.search(keyword, targetPerKeyword);
+                List<SocialPost> results = (List<SocialPost>) client.search(keyword, null, null);
                 allVideos.addAll(results);
             }
 
