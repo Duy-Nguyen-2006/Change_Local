@@ -36,10 +36,11 @@ import java.util.List;
  * WEBHOOK API CONTRACT (giả định):
  * POST /analyze
  * Request Body: { "content": "..." }
- * Response Body: {
- *   "sentiment": "positive" | "negative" | "neutral",
- *   "location": "Hanoi" | "HCMC" | ...,
- *   "focus": "politics" | "economy" | "sports" | ...
+ * Response Body ví dụ:
+ * {
+ *   "loai_bai_viet": "cuu_ho",
+ *   "cam_xuc_bai_viet": "tieu_cuc",
+ *   "tinh_thanh": "khong_xac_dinh"
  * }
  */
 public class WebhookProcessor implements IDataProcessor, AutoCloseable {
@@ -91,15 +92,15 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
                 // Gọi webhook để phân tích nội dung
                 JsonObject metadata = analyzeContent(post.getContent());
 
-                // Cập nhật metadata vào Post
-                if (metadata.has("sentiment")) {
-                    post.setSentiment(metadata.get("sentiment").getAsString());
+                // Map metadata theo key tiếng Việt từ webhook
+                if (metadata.has("cam_xuc_bai_viet") && !metadata.get("cam_xuc_bai_viet").isJsonNull()) {
+                    post.setSentiment(metadata.get("cam_xuc_bai_viet").getAsString());
                 }
-                if (metadata.has("location")) {
-                    post.setLocation(metadata.get("location").getAsString());
+                if (metadata.has("tinh_thanh") && !metadata.get("tinh_thanh").isJsonNull()) {
+                    post.setLocation(metadata.get("tinh_thanh").getAsString());
                 }
-                if (metadata.has("focus")) {
-                    post.setFocus(metadata.get("focus").getAsString());
+                if (metadata.has("loai_bai_viet") && !metadata.get("loai_bai_viet").isJsonNull()) {
+                    post.setFocus(metadata.get("loai_bai_viet").getAsString());
                 }
 
                 enrichedPosts.add(post);
@@ -175,40 +176,40 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
         String lowerContent = content.toLowerCase();
         if (lowerContent.contains("tốt") || lowerContent.contains("thành công") ||
             lowerContent.contains("tăng") || lowerContent.contains("phát triển")) {
-            metadata.addProperty("sentiment", "positive");
+            metadata.addProperty("cam_xuc_bai_viet", "tich_cuc");
         } else if (lowerContent.contains("xấu") || lowerContent.contains("thất bại") ||
                    lowerContent.contains("giảm") || lowerContent.contains("khủng hoảng")) {
-            metadata.addProperty("sentiment", "negative");
+            metadata.addProperty("cam_xuc_bai_viet", "tieu_cuc");
         } else {
-            metadata.addProperty("sentiment", "neutral");
+            metadata.addProperty("cam_xuc_bai_viet", "trung_lap");
         }
 
         // Mock location - Dựa vào tên địa danh
         if (lowerContent.contains("hà nội") || lowerContent.contains("hanoi")) {
-            metadata.addProperty("location", "Hanoi");
+            metadata.addProperty("tinh_thanh", "ha_noi");
         } else if (lowerContent.contains("hồ chí minh") || lowerContent.contains("sài gòn") ||
                    lowerContent.contains("ho chi minh") || lowerContent.contains("saigon")) {
-            metadata.addProperty("location", "HCMC");
+            metadata.addProperty("tinh_thanh", "tp_hcm");
         } else if (lowerContent.contains("đà nẵng") || lowerContent.contains("da nang")) {
-            metadata.addProperty("location", "Da Nang");
+            metadata.addProperty("tinh_thanh", "da_nang");
         } else {
-            metadata.addProperty("location", "Vietnam");
+            metadata.addProperty("tinh_thanh", "khong_xac_dinh");
         }
 
-        // Mock focus - Dựa vào chủ đề
+        // Mock loai_bai_viet - Dựa vào chủ đề
         if (lowerContent.contains("chính trị") || lowerContent.contains("chính phủ") ||
             lowerContent.contains("bầu cử")) {
-            metadata.addProperty("focus", "politics");
+            metadata.addProperty("loai_bai_viet", "chinh_tri");
         } else if (lowerContent.contains("kinh tế") || lowerContent.contains("doanh nghiệp") ||
                    lowerContent.contains("thị trường")) {
-            metadata.addProperty("focus", "economy");
+            metadata.addProperty("loai_bai_viet", "kinh_te");
         } else if (lowerContent.contains("thể thao") || lowerContent.contains("bóng đá")) {
-            metadata.addProperty("focus", "sports");
+            metadata.addProperty("loai_bai_viet", "the_thao");
         } else if (lowerContent.contains("công nghệ") || lowerContent.contains("ai") ||
                    lowerContent.contains("startup")) {
-            metadata.addProperty("focus", "technology");
+            metadata.addProperty("loai_bai_viet", "cong_nghe");
         } else {
-            metadata.addProperty("focus", "general");
+            metadata.addProperty("loai_bai_viet", "tong_hop");
         }
 
         return metadata;
