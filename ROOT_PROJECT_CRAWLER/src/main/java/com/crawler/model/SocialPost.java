@@ -17,12 +17,6 @@ public class SocialPost extends AbstractPost {
         this.reaction = reaction;
     }
 
-    public SocialPost() {
-        super();
-        this.createdDate = null;
-        this.reaction = 0;
-    }
-
     public long getReaction() {
         return reaction;
     }

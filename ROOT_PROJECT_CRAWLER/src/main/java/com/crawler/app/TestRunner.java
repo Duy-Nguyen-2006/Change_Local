@@ -5,6 +5,7 @@ import com.crawler.client.ISearchClient;
 import com.crawler.client.VNExpressClient; // CHỌN CLIENT BÁO CHÍ ĐỂ TEST
 import com.crawler.model.AbstractPost;
 import com.crawler.processor.IDataProcessor;
+import com.crawler.processor.NewsFilterProcessor;
 import com.crawler.processor.WebhookProcessor;
 import com.crawler.repository.IPostRepository;
 import com.crawler.repository.SQLitePostRepository;
@@ -12,6 +13,7 @@ import com.crawler.service.IPostService;
 import com.crawler.service.PostService;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 
 public class TestRunner {
@@ -27,17 +29,25 @@ public class TestRunner {
         // ========== 2. DEPENDENCY INJECTION (DI) ==========
         // TẠO TẤT CẢ CÁC THÀNH PHẦN CONCRETE (CONCRETE CLASSES)
         try (WebhookProcessor webhookProcessor = new WebhookProcessor("https://api.volunteer-community.io.vn/v1/chat/completions")) {
-            
-            IPostRepository repository = new SQLitePostRepository();
-            
-            // CHỌN CLIENT CỤ THỂ ĐỂ TEST (Ví dụ: VNExpress)
-            ISearchClient newsClient = new VNExpressClient(); 
-            
-            // Dùng WebhookProcessor làm IDataProcessor
-            IDataProcessor processor = webhookProcessor;
 
-            // TIÊM PHỤ THUỘC (DIP) - Tiêm Interface vào Service
-            IPostService service = new PostService(repository, newsClient, processor);
+            IPostRepository repository = new SQLitePostRepository();
+
+            // CHỌN CLIENT CỤ THỂ ĐỂ TEST (Ví dụ: VNExpress)
+            ISearchClient newsClient = new VNExpressClient();
+
+            // CẤU HÌNH KEYWORDS CHO NEWS FILTER (Configuration Layer)
+            List<String> disasterKeywords = Arrays.asList(
+                "bão", "lũ", "lũ lụt", "sạt lở đất", "thiên tai", "ngập",
+                "mưa lớn", "mưa to", "giông", "lũ quét", "triều cường"
+            );
+
+            // TẠO PROCESSOR PIPELINE: Filter trước, sau đó Enrich
+            IDataProcessor newsFilter = new NewsFilterProcessor(startDate, endDate, disasterKeywords);
+            IDataProcessor webhookEnricher = webhookProcessor;
+
+            // TIÊM PHỤ THUỘC (DIP) - Tiêm Processor Pipeline vào Service
+            // NewsFilterProcessor sẽ chạy TRƯỚC WebhookProcessor
+            IPostService service = new PostService(repository, newsClient, Arrays.asList(newsFilter, webhookEnricher));
 
             // ========== 3. GỌI LOGIC NGHIỆP VỤ (SERVICE CALL) ==========
             System.out.println("\n[GỌI SERVICE] province=" + province);

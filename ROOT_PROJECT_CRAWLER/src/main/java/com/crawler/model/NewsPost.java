@@ -19,13 +19,6 @@ public class NewsPost extends AbstractPost {
         this.comments = comments;
     }
 
-    public NewsPost() {
-        super();
-        this.postDate = LocalDate.now();
-        this.title = "";
-        this.comments = 0;
-    }
-
     public LocalDate getPostDate() {
         return postDate;
     }
