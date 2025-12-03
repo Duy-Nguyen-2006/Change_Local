@@ -154,7 +154,7 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
 
                 if (statusCode >= 200 && statusCode < 300) {
                     String responseBody = EntityUtils.toString(response.getEntity());
-                    return JsonParser.parseString(responseBody).getAsJsonObject();
+                    return parseWebhookResponse(responseBody);
                 } else {
                     throw new CrawlerException("Webhook returned error: HTTP " + statusCode);
                 }
@@ -162,6 +162,46 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
 
         } catch (IOException | ParseException e) { // BẮT THÊM ParseException
         throw new CrawlerException("Failed to call webhook API: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Parse webhook response - xử lý format đặc biệt
+     * Webhook trả về: { "output": "```json\n{...}\n```" }
+     * Cần extract JSON thật từ bên trong markdown code block
+     */
+    private JsonObject parseWebhookResponse(String responseBody) throws CrawlerException {
+        try {
+            // Parse response wrapper
+            JsonObject wrapper = JsonParser.parseString(responseBody).getAsJsonObject();
+
+            // Kiểm tra có field "output" không
+            if (!wrapper.has("output")) {
+                // Nếu không có, giả sử đây là JSON trực tiếp
+                return wrapper;
+            }
+
+            // Lấy output string
+            String output = wrapper.get("output").getAsString();
+
+            // Remove markdown code block wrapper: ```json ... ```
+            String jsonContent = output.trim();
+            if (jsonContent.startsWith("```json")) {
+                jsonContent = jsonContent.substring("```json".length()).trim();
+            } else if (jsonContent.startsWith("```")) {
+                jsonContent = jsonContent.substring("```".length()).trim();
+            }
+
+            if (jsonContent.endsWith("```")) {
+                jsonContent = jsonContent.substring(0, jsonContent.length() - 3).trim();
+            }
+
+            // Parse JSON thật
+            return JsonParser.parseString(jsonContent).getAsJsonObject();
+
+        } catch (Exception e) {
+            throw new CrawlerException("Failed to parse webhook response: " + e.getMessage() +
+                                     "\nResponse body: " + responseBody, e);
         }
     }
 
