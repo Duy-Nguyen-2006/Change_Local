@@ -79,6 +79,9 @@ public class PostService implements IPostService {
      * 1. Check cache
      * 2. If cached → return từ cache (FAST PATH)
      * 3. If not → crawl → process → save → return (SLOW PATH)
+     *
+     * NOTE: Crawler lifecycle (initialize/close) KHÔNG được quản lý ở đây.
+     * Application layer (Main/TestRunner) phải đảm bảo crawler đã được initialize trước khi gọi service.
      */
     @Override
     public List<? extends AbstractPost> getPosts(String province, LocalDate startDate, LocalDate endDate) throws CrawlerException {
@@ -96,9 +99,8 @@ public class PostService implements IPostService {
         System.out.println("-> Cache MISS! Crawling...");
 
         // 2. Crawl (DÙNG HÀM SEARCH MỚI VỚI DATE)
-        crawler.initialize();
+        // Crawler đã được initialize bởi application layer
         List<? extends AbstractPost> rawPosts = crawler.search(province, startDate, endDate);
-        crawler.close();
 
         // 3. Process (Filter + enrichment)
         List<? extends AbstractPost> processedPosts = applyProcessors(rawPosts, startDate, endDate);
