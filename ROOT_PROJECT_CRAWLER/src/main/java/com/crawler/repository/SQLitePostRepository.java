@@ -1,17 +1,14 @@
 package com.crawler.repository;
 
 import com.crawler.model.AbstractPost;
-import com.crawler.model.NewsPost;
-import com.crawler.model.SocialPost;
 import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 
 import java.sql.*;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
+import java.lang.reflect.Type;
 
 /**
  * SQLitePostRepository - CONCRETE IMPLEMENTATION của IPostRepository
@@ -37,9 +34,13 @@ public class SQLitePostRepository implements IPostRepository {
     private static final String DB_URL = "jdbc:sqlite:crawler_cache.db";
     private static final String TABLE_NAME = "post_cache";
     private final Gson gson;
+    private final Type listType = new TypeToken<List<AbstractPost>>() {}.getType();
 
     public SQLitePostRepository() {
-        this.gson = new Gson();
+        this.gson = new GsonBuilder()
+                .registerTypeAdapter(LocalDate.class, new LocalDateAdapter())
+                .registerTypeHierarchyAdapter(AbstractPost.class, new PostTypeAdapter())
+                .create();
         initDatabase();
     }
 
@@ -88,13 +89,7 @@ public class SQLitePostRepository implements IPostRepository {
         String postType = posts.get(0).getClass().getSimpleName();
 
         // Serialize list sang JSON
-        JsonArray jsonArray = new JsonArray();
-        for (AbstractPost post : posts) {
-            JsonObject jsonPost = serializePost(post);
-            jsonArray.add(jsonPost);
-        }
-
-        String postsJson = gson.toJson(jsonArray);
+        String postsJson = gson.toJson(posts, listType);
 
         // INSERT hoặc REPLACE vào SQLite
         String sql = String.format(
@@ -136,21 +131,8 @@ public class SQLitePostRepository implements IPostRepository {
             ResultSet rs = pstmt.executeQuery();
 
             if (rs.next()) {
-                String postType = rs.getString("post_type");
                 String postsJson = rs.getString("posts_json");
-
-                // Deserialize JSON array
-                JsonArray jsonArray = JsonParser.parseString(postsJson).getAsJsonArray();
-
-                // POLYMORPHISM - Tạo NewsPost hoặc SocialPost dựa vào post_type
-                if ("NewsPost".equals(postType)) {
-                    return deserializeNewsPosts(jsonArray);
-                } else if ("SocialPost".equals(postType)) {
-                    return deserializeSocialPosts(jsonArray);
-                } else {
-                    System.err.println("✗ Unknown post type: " + postType);
-                    return null;
-                }
+                return gson.fromJson(postsJson, listType);
             } else {
                 System.out.println("No cached data found for keyword: " + keyword);
                 return null;
@@ -186,104 +168,4 @@ public class SQLitePostRepository implements IPostRepository {
         }
     }
 
-    // ========== HELPER METHODS - SERIALIZATION ==========
-
-    /**
-     * Serialize AbstractPost (NewsPost hoặc SocialPost) sang JsonObject
-     * POLYMORPHISM: Xử lý cả NewsPost và SocialPost
-     */
-    private JsonObject serializePost(AbstractPost post) {
-        JsonObject json = new JsonObject();
-
-        // Trường chung từ AbstractPost
-        json.addProperty("content", post.getContent());
-        json.addProperty("platform", post.getPlatform());
-        json.addProperty("sentiment", post.getSentiment());
-        json.addProperty("location", post.getLocation());
-        json.addProperty("focus", post.getFocus());
-
-        // Trường riêng của từng loại Post
-        if (post instanceof NewsPost) {
-            NewsPost newsPost = (NewsPost) post;
-            json.addProperty("postDate", newsPost.getPostDate() != null ? newsPost.getPostDate().toString() : null);
-            json.addProperty("title", newsPost.getTitle());
-            json.addProperty("comments", newsPost.getComments());
-        } else if (post instanceof SocialPost) {
-            SocialPost socialPost = (SocialPost) post;
-            json.addProperty("createdDate", socialPost.getCreatedDate());
-            json.addProperty("reaction", socialPost.getReaction());
-        }
-
-        return json;
-    }
-
-    /**
-     * Deserialize JsonArray thành List<NewsPost>
-     */
-    private List<NewsPost> deserializeNewsPosts(JsonArray jsonArray) {
-        List<NewsPost> posts = new ArrayList<>();
-
-        for (int i = 0; i < jsonArray.size(); i++) {
-            JsonObject json = jsonArray.get(i).getAsJsonObject();
-
-            String postDateStr = json.has("postDate") && !json.get("postDate").isJsonNull()
-                    ? json.get("postDate").getAsString() : null;
-            LocalDate postDate = postDateStr != null ? LocalDate.parse(postDateStr) : LocalDate.now();
-
-            String title = json.has("title") ? json.get("title").getAsString() : "";
-            String content = json.has("content") ? json.get("content").getAsString() : "";
-            String platform = json.has("platform") ? json.get("platform").getAsString() : "";
-            int comments = json.has("comments") ? json.get("comments").getAsInt() : 0;
-
-            NewsPost post = new NewsPost(postDate, title, content, platform, comments);
-
-            // Restore webhook metadata
-            if (json.has("sentiment") && !json.get("sentiment").isJsonNull()) {
-                post.setSentiment(json.get("sentiment").getAsString());
-            }
-            if (json.has("location") && !json.get("location").isJsonNull()) {
-                post.setLocation(json.get("location").getAsString());
-            }
-            if (json.has("focus") && !json.get("focus").isJsonNull()) {
-                post.setFocus(json.get("focus").getAsString());
-            }
-
-            posts.add(post);
-        }
-
-        return posts;
-    }
-
-    /**
-     * Deserialize JsonArray thành List<SocialPost>
-     */
-    private List<SocialPost> deserializeSocialPosts(JsonArray jsonArray) {
-        List<SocialPost> posts = new ArrayList<>();
-
-        for (int i = 0; i < jsonArray.size(); i++) {
-            JsonObject json = jsonArray.get(i).getAsJsonObject();
-
-            String content = json.has("content") ? json.get("content").getAsString() : "";
-            String platform = json.has("platform") ? json.get("platform").getAsString() : "";
-            String createdDate = json.has("createdDate") ? json.get("createdDate").getAsString() : "";
-            long reaction = json.has("reaction") ? json.get("reaction").getAsLong() : 0;
-
-            SocialPost post = new SocialPost(content, platform, createdDate, reaction);
-
-            // Restore webhook metadata
-            if (json.has("sentiment") && !json.get("sentiment").isJsonNull()) {
-                post.setSentiment(json.get("sentiment").getAsString());
-            }
-            if (json.has("location") && !json.get("location").isJsonNull()) {
-                post.setLocation(json.get("location").getAsString());
-            }
-            if (json.has("focus") && !json.get("focus").isJsonNull()) {
-                post.setFocus(json.get("focus").getAsString());
-            }
-
-            posts.add(post);
-        }
-
-        return posts;
-    }
 }
