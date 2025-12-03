@@ -1,11 +1,17 @@
 package com.crawler.app;
 
-import com.crawler.client.*;
-import com.crawler.model.AbstractPost;
-import com.crawler.util.PostCsvExporter;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.crawler.client.CrawlerException;
+import com.crawler.client.DantriClient;
+import com.crawler.client.ISearchClient;
+import com.crawler.client.TikTokSearchClient;
+import com.crawler.client.VNExpressClient;
+import com.crawler.client.XSearchClient;
+import com.crawler.model.AbstractPost;
+import com.crawler.util.PostCsvExporter;
 
 /**
  * Main Application - DEMO ĐA HÌNH HOÀN HẢO (UNIFIED POLYMORPHISM)
@@ -64,6 +70,9 @@ public class Main {
         System.out.println("Khoảng thời gian: " + startDate + " → " + endDate + "\n");
         System.out.println("═══════════════════════════════════════════════════\n");
 
+        // ========== THU THẬP TẤT CẢ KẾT QUẢ VÀO MỘT LIST DUY NHẤT ==========
+        List<AbstractPost> allResults = new ArrayList<>();
+
         // ========== CHỈ CÓ MỘT VÒNG LẶP CHO TẤT CẢ CRAWLER ==========
         // LATE BINDING / DYNAMIC DISPATCH - Phương thức được gọi tại runtime
         for (ISearchClient crawler : allCrawlers) {
@@ -84,10 +93,8 @@ public class Main {
                 // Hiển thị 2 bài đầu tiên
                 displaySamplePosts(results, 2);
 
-                // Lưu vào database - POLYMORPHISM: savePosts() nhận AbstractPost
-                // Export to CSV - SRP: Tách logic export ra class riêng
-                String csvFile = crawler.getClass().getSimpleName() + "_results.csv";
-                PostCsvExporter.export(results, csvFile);
+                // Thêm kết quả vào list tổng hợp
+                allResults.addAll(results);
 
                 // POLYMORPHISM - close() hoạt động khác nhau cho từng crawler
                 crawler.close();
@@ -98,6 +105,15 @@ public class Main {
                 System.err.println("✗ Lỗi khi crawl: " + e.getMessage());
                 System.err.println("═══════════════════════════════════════════════════\n");
             }
+        }
+
+        // ========== EXPORT TẤT CẢ KẾT QUẢ VÀO MỘT FILE DUY NHẤT ==========
+        String outputFile = "D:\\OOP_Local_Change\\ROOT_PROJECT_CRAWLER\\AllClients_results_utf8.csv";
+        if (!allResults.isEmpty()) {
+            PostCsvExporter.export(allResults, outputFile);
+            System.out.println("\n📊 Đã lưu TOÀN BỘ " + allResults.size() + " kết quả vào: " + outputFile);
+        } else {
+            System.out.println("\n⚠ Không có kết quả nào để export.");
         }
 
         System.out.println("╔═══════════════════════════════════════════════════╗");

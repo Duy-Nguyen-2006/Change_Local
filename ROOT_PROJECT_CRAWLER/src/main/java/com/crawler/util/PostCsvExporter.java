@@ -1,10 +1,14 @@
 package com.crawler.util;
 
+import java.io.BufferedWriter;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+
 import com.crawler.model.AbstractPost;
 import com.opencsv.CSVWriter;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.List;
 
 /**
  * PostCsvExporter - CLASS CHUYÊN TRÁCH VIỆC XUẤT DỮ LIỆU
@@ -30,7 +34,13 @@ public class PostCsvExporter {
             return;
         }
 
-        try (CSVWriter writer = new CSVWriter(new FileWriter(filePath))) {
+        try (FileOutputStream fos = new FileOutputStream(filePath);
+             OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
+             BufferedWriter bw = new BufferedWriter(osw);
+             CSVWriter writer = new CSVWriter(bw)) {
+
+            // Ghi UTF-8 BOM để Excel đọc đúng tiếng Việt
+            fos.write(new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF});
 
             // POLYMORPHISM - Lấy Header từ Post đầu tiên
             // Post nào cũng là AbstractPost nên nó sẽ gọi đúng getCsvHeader() của nó!
