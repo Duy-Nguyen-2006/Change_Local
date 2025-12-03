@@ -1,13 +1,14 @@
 package com.crawler.service;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+
 import com.crawler.client.CrawlerException;
 import com.crawler.client.ISearchClient;
 import com.crawler.model.AbstractPost;
 import com.crawler.processor.IDataProcessor;
 import com.crawler.repository.IPostRepository;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * PostService - CONCRETE IMPLEMENTATION của IPostService
@@ -84,9 +85,10 @@ public class PostService implements IPostService {
      * Application layer (Main/TestRunner) phải đảm bảo crawler đã được initialize trước khi gọi service.
      */
     @Override
-    public List<? extends AbstractPost> getPosts(String province, LocalDate startDate, LocalDate endDate) throws CrawlerException {
+    // ĐỔI TÊN THAM SỐ THÀNH KEYWORD ĐỂ ĐỒNG BỘ VỚI INTERFACE IPostService
+    public List<? extends AbstractPost> getPosts(String keyword, LocalDate startDate, LocalDate endDate) throws CrawlerException {
         // TẠO CACHE KEY: Keyword + DateRange
-        String cacheKey = String.format("%s_%s_%s", province, startDate, endDate).replace(" ", "_");
+        String cacheKey = String.format("%s_%s_%s", keyword, startDate, endDate).replace(" ", "_");
 
         System.out.println("[PostService] Checking cache for key: " + cacheKey);
 
@@ -100,10 +102,10 @@ public class PostService implements IPostService {
 
         // 2. Crawl (DÙNG HÀM SEARCH MỚI VỚI DATE)
         // Crawler đã được initialize bởi application layer
-        List<? extends AbstractPost> rawPosts = crawler.search(province, startDate, endDate);
+        List<? extends AbstractPost> rawPosts = crawler.search(keyword, startDate, endDate);
 
         // 3. Process (Filter + enrichment)
-        List<? extends AbstractPost> processedPosts = applyProcessors(rawPosts, startDate, endDate);
+        List<? extends AbstractPost> processedPosts = applyProcessors(rawPosts);
 
         // 4. Save Cache
         repository.save(processedPosts, cacheKey);
@@ -111,9 +113,7 @@ public class PostService implements IPostService {
         return processedPosts;
     }
 
-    private List<? extends AbstractPost> applyProcessors(List<? extends AbstractPost> rawPosts,
-                                                         LocalDate startDate,
-                                                         LocalDate endDate) throws CrawlerException {
+    private List<? extends AbstractPost> applyProcessors(List<? extends AbstractPost> rawPosts) throws CrawlerException {
         List<? extends AbstractPost> current = rawPosts;
         for (IDataProcessor processor : this.processors) {
             if (processor == null) {

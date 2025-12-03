@@ -1,7 +1,5 @@
 package com.crawler.client;
 
-import com.crawler.model.SocialPost;
-import com.crawler.util.XParser;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -13,6 +11,9 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import com.crawler.model.SocialPost;
+import com.crawler.util.XParser;
 
 /**
  * X (Twitter) Search Client - IMPLEMENTS ISearchClient
@@ -150,53 +151,5 @@ public class XSearchClient implements ISearchClient {
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .toList();
-    }
-
-    /**
-     * Crawl X for the given keywords and save all posts into SQLite.
-     */
-    public static void crawlAndSave(List<String> keywords) {
-        if (keywords == null || keywords.isEmpty()) {
-            System.out.println("No X keywords provided.");
-            return;
-        }
-
-        // SỬ DỤNG POLYMORPHISM - Upcasting to interface
-        ISearchClient client = new XSearchClient();
-        client.initialize();
-
-        List<SocialPost> allPosts = new ArrayList<>();
-
-        try {
-            for (String keyword : keywords) {
-                List<SocialPost> results = (List<SocialPost>) client.search(keyword, null, null);
-                allPosts.addAll(results);
-            }
-
-            System.out.println("Total X posts collected: " + allPosts.size());
-
-        } catch (CrawlerException e) {
-            System.err.println("Lỗi crawl: " + e.getMessage());
-            e.printStackTrace();
-        } finally {
-            client.close();
-        }
-    }
-
-    /**
-     * Test main
-     */
-    public static void main(String[] args) {
-        String raw;
-        if (args.length > 0) {
-            raw = args[0];
-        } else {
-            raw = "xả lũ phú yên, bão yagi";
-        }
-
-        List<String> keywords = parseKeywords(raw);
-        System.out.println("Parsed X keywords: " + keywords);
-
-        crawlAndSave(keywords);
     }
 }
