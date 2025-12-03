@@ -1,6 +1,6 @@
 package com.crawler.client;
 
-import com.crawler.model.Post;
+import com.crawler.model.NewsPost;
 import com.crawler.util.CrawlerEnv;
 import java.io.IOException;
 import java.time.*;
@@ -9,8 +9,9 @@ import org.jsoup.nodes.*;
 import org.jsoup.select.Elements;
 
 /**
- * VNExpress News Crawler - Kế thừa CrawlerEnv
+ * VNExpress News Crawler - Kế thừa CrawlerEnv (IMPLEMENTS ISearchClient qua CrawlerEnv)
  * ÁP DỤNG INHERITANCE và POLYMORPHISM
+ * Return type: List<NewsPost> (áp dụng INHERITANCE)
  */
 public class VNExpressClient extends CrawlerEnv {
     /**
@@ -45,8 +46,14 @@ public class VNExpressClient extends CrawlerEnv {
                         comments = 0;
                     }
 
-                    addPost(new Post(LocalDate.ofInstant(Instant.ofEpochSecond(instant), ZoneId.systemDefault()),
-                                title, summary, "VNExpress", comments));
+                    // SỬ DỤNG NewsPost thay vì Post
+                    addPost(new NewsPost(
+                            LocalDate.ofInstant(Instant.ofEpochSecond(instant), ZoneId.systemDefault()),
+                            title,
+                            summary,
+                            "VNExpress",
+                            comments
+                    ));
                     System.out.println("VNExpress: Crawled 1 post");
                 }
 

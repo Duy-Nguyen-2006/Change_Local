@@ -1,6 +1,6 @@
 package com.crawler.util;
 
-import com.crawler.model.Post;
+import com.crawler.model.AbstractPost;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -9,8 +9,8 @@ import java.sql.Statement;
 import java.util.List;
 
 /**
- * Tiny helper for storing generic Post rows into a local SQLite file.
- * Used by TikTok crawler, X crawler, etc.
+ * Tiny helper for storing generic AbstractPost rows into a local SQLite file.
+ * POLYMORPHISM: Có thể lưu cả NewsPost và SocialPost (DIP - Depend on Abstraction)
  */
 public class SocialDatabase {
 
@@ -28,7 +28,7 @@ public class SocialDatabase {
                     platform TEXT    NOT NULL,
                     content  TEXT    NOT NULL,
                     date     TEXT,
-                    reaction INTEGER
+                    engagement_score INTEGER
                 );
                 """;
             stmt.execute(sql);
@@ -40,33 +40,37 @@ public class SocialDatabase {
 
     /**
      * Save a batch of posts (from any platform) to the DB.
+     * POLYMORPHISM: Accepts List<? extends AbstractPost> - có thể là NewsPost hoặc SocialPost
      * This APPENDS rows; it does not overwrite existing data.
      */
-    public static void savePosts(List<Post> posts) {
+    public static void savePosts(List<? extends AbstractPost> posts) {
         if (posts == null || posts.isEmpty()) {
             return;
         }
 
-        String sql = "INSERT INTO posts(platform, content, date, reaction) VALUES(?, ?, ?, ?)";
+        String sql = "INSERT INTO posts(platform, content, date, engagement_score) VALUES(?, ?, ?, ?)";
 
         try (Connection conn = DriverManager.getConnection(DB_URL);
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             conn.setAutoCommit(false);
 
-            for (Post p : posts) {
-                // Make sure platform is set by caller ("tiktok", "x", ...)
+            for (AbstractPost p : posts) {
+                // POLYMORPHISM - getEngagementScore() hoạt động khác nhau cho NewsPost vs SocialPost
                 ps.setString(1, p.getPlatform());
                 ps.setString(2, p.getContent());
-                ps.setString(3, p.getCreatedDate());
-                ps.setLong(4, p.getReaction());
+                ps.setString(3, p.getDisplayDate());
+                ps.setLong(4, p.getEngagementScore());
                 ps.addBatch();
             }
 
             ps.executeBatch();
             conn.commit();
 
+            System.out.println("Đã lưu " + posts.size() + " posts vào database.");
+
         } catch (SQLException e) {
+            System.err.println("Lỗi khi lưu vào database: " + e.getMessage());
             e.printStackTrace();
         }
     }

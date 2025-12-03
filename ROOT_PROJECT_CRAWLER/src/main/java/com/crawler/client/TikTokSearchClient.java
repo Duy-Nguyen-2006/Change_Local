@@ -1,6 +1,6 @@
 package com.crawler.client;
 
-import com.crawler.model.Post;
+import com.crawler.model.SocialPost;
 import com.crawler.util.TikTokParser;
 import com.crawler.util.SocialDatabase;
 import java.io.IOException;
@@ -17,6 +17,7 @@ import java.util.List;
 /**
  * TikTok Search Client - IMPLEMENTS ISearchClient
  * ÁP DỤNG POLYMORPHISM và ABSTRACTION
+ * Return type: List<SocialPost> (áp dụng INHERITANCE)
  */
 public class TikTokSearchClient implements ISearchClient {
 
@@ -47,47 +48,53 @@ public class TikTokSearchClient implements ISearchClient {
      * Tìm kiếm TikTok videos - IMPLEMENTS interface method
      * @param query Từ khóa tìm kiếm
      * @param limit Số lượng video tối đa
-     * @return Danh sách Post
+     * @return Danh sách SocialPost
+     * @throws CrawlerException Nếu có lỗi khi crawl
      */
     @Override
-    public List<Post> search(String query, int limit) throws Exception {
-        if (httpClient == null) {
-            initialize();
+    public List<SocialPost> search(String query, int limit) throws CrawlerException {
+        try {
+            if (httpClient == null) {
+                initialize();
+            }
+
+            String region = "vn";
+            int pageSize = 30;
+            int cursor = 0;
+            int collected = 0;
+
+            List<SocialPost> allVideos = new ArrayList<>();
+
+            System.out.println("TikTok - Keyword: \"" + query + "\"");
+
+            while (collected < limit) {
+                String json = performSearch(query, region, pageSize, cursor);
+
+                List<SocialPost> batch = TikTokParser.parseSearchResult(json);
+                if (batch.isEmpty()) {
+                    break;
+                }
+
+                allVideos.addAll(batch);
+                collected += batch.size();
+                System.out.println("  collected " + collected + " videos so far");
+
+                if (!TikTokParser.hasMore(json)) {
+                    break;
+                }
+                int nextCursor = TikTokParser.extractNextCursor(json);
+                if (nextCursor <= cursor) {
+                    break;
+                }
+                cursor = nextCursor;
+            }
+
+            System.out.println("Finished keyword \"" + query + "\" with " + collected + " videos.");
+            return allVideos;
+
+        } catch (Exception e) {
+            throw new CrawlerException("Lỗi khi crawl TikTok: " + e.getMessage(), e);
         }
-
-        String region = "vn";
-        int pageSize = 30;
-        int cursor = 0;
-        int collected = 0;
-
-        List<Post> allVideos = new ArrayList<>();
-
-        System.out.println("TikTok - Keyword: \"" + query + "\"");
-
-        while (collected < limit) {
-            String json = performSearch(query, region, pageSize, cursor);
-
-            List<Post> batch = TikTokParser.parseSearchResult(json);
-            if (batch.isEmpty()) {
-                break;
-            }
-
-            allVideos.addAll(batch);
-            collected += batch.size();
-            System.out.println("  collected " + collected + " videos so far");
-
-            if (!TikTokParser.hasMore(json)) {
-                break;
-            }
-            int nextCursor = TikTokParser.extractNextCursor(json);
-            if (nextCursor <= cursor) {
-                break;
-            }
-            cursor = nextCursor;
-        }
-
-        System.out.println("Finished keyword \"" + query + "\" with " + collected + " videos.");
-        return allVideos;
     }
 
     /**
@@ -131,7 +138,6 @@ public class TikTokSearchClient implements ISearchClient {
 
     /**
      * Parse a comma-separated keyword string into a list.
-     * Example: "bão lũ, lũ lụt ,mưa lũ" -> ["bão lũ", "lũ lụt", "mưa lũ"]
      */
     public static List<String> parseKeywords(String raw) {
         if (raw == null || raw.isBlank()) return List.of();
@@ -144,7 +150,7 @@ public class TikTokSearchClient implements ISearchClient {
     /**
      * Crawl TikTok for the given keywords and save all posts into SQLite.
      */
-    public static void crawlAndSave(List<String> keywords) throws Exception {
+    public static void crawlAndSave(List<String> keywords) {
         if (keywords == null || keywords.isEmpty()) {
             System.out.println("No keywords provided.");
             return;
@@ -155,18 +161,20 @@ public class TikTokSearchClient implements ISearchClient {
         client.initialize();
 
         int targetPerKeyword = 120;
-        List<Post> allVideos = new ArrayList<>();
+        List<SocialPost> allVideos = new ArrayList<>();
 
         try {
             for (String keyword : keywords) {
-                List<Post> results = client.search(keyword, targetPerKeyword);
+                List<SocialPost> results = (List<SocialPost>) client.search(keyword, targetPerKeyword);
                 allVideos.addAll(results);
             }
 
             System.out.println("Total videos collected: " + allVideos.size());
             SocialDatabase.savePosts(allVideos);
-            System.out.println("All videos saved into disaster_post_data.db");
 
+        } catch (CrawlerException e) {
+            System.err.println("Lỗi crawl: " + e.getMessage());
+            e.printStackTrace();
         } finally {
             client.close();
         }
@@ -180,16 +188,12 @@ public class TikTokSearchClient implements ISearchClient {
         if (args.length > 0) {
             raw = args[0];
         } else {
-            raw = "bão lũ, lũ lụt, mưa lũ, cứu trợ bão lũ, hướng về miền trung";
+            raw = "bão lũ, lũ lụt, mưa lũ";
         }
 
         List<String> keywords = parseKeywords(raw);
         System.out.println("Parsed keywords: " + keywords);
 
-        try {
-            crawlAndSave(keywords);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        crawlAndSave(keywords);
     }
 }
