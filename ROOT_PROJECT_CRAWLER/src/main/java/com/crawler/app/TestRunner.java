@@ -15,6 +15,7 @@ import com.crawler.repository.IPostRepository;
 import com.crawler.repository.SQLitePostRepository;
 import com.crawler.service.IPostService;
 import com.crawler.service.PostService;
+import com.crawler.util.PostCsvExporter;
 
 public class TestRunner {
 
@@ -30,7 +31,7 @@ public class TestRunner {
         // ========== 2. DEPENDENCY INJECTION (DI) ==========
         // TẠO TẤT CẢ CÁC THÀNH PHẦN CONCRETE (CONCRETE CLASSES)
         ISearchClient newsClient = null;
-        try (WebhookProcessor webhookProcessor = new WebhookProcessor("https://api.volunteer-community.io.vn/v1/chat/completions")) {
+        try (WebhookProcessor webhookProcessor = new WebhookProcessor("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent")) {
 
             IPostRepository repository = new SQLitePostRepository();
 
@@ -65,6 +66,11 @@ public class TestRunner {
             // ========== 4. KIỂM TRA KẾT QUẢ XỬ LÝ ==========
             System.out.println("\n--- KẾT QUẢ CRAWL VÀ XỬ LÝ (POLYMORPHISM) ---");
             System.out.println("TỔNG SỐ BÀI VÀO DB: " + results.size());
+            
+            // Luu ra 1 file CSV duy nhat de xem nhanh
+            String csvFile = "TestRunner_" + keyword.replaceAll("\\s+", "_") + ".csv";
+            PostCsvExporter.export(results, csvFile);
+            System.out.println("[CSV] Da luu du lieu vao: " + csvFile);
 
             if (!results.isEmpty()) {
                 AbstractPost sample = results.get(0);

@@ -1,8 +1,10 @@
 package com.crawler.processor;
 
 import java.io.IOException;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -25,9 +27,9 @@ import com.google.gson.JsonParser;
  */
 public class WebhookProcessor implements IDataProcessor, AutoCloseable {
 
-    private static final String DEFAULT_AI_URL = "https://api.volunteer-community.io.vn/v1/chat/completions";
-    private static final String DEFAULT_MODEL = "gemini-2.5-flash";
-    private static final String DEFAULT_API_KEY = "duy-demo-key";
+    private static final String DEFAULT_AI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+    private static final String DEFAULT_MODEL = "gemini-1.5-flash";
+    private static final String DEFAULT_API_KEY = "AIzaSyA42BH1RwgFUIQxebfH0IeTGhtu_tURGt8";
     private static final String SYSTEM_PROMPT = """
             Bạn là AI phân loại nội dung bài viết.
             Yêu cầu: trả về JSON với các trường loai_bai_viet, cam_xuc_bai_viet, tinh_thanh, huong_bai_viet.
@@ -40,6 +42,21 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
     private final String systemPrompt;
     private final Gson gson;
     private final CloseableHttpClient httpClient;
+
+    private static final Map<String, String> DAMAGE_CATEGORY_MAP = Map.of(
+            "ha tang", "hạ tầng",
+            "nong nghiep", "nông nghiệp",
+            "nha cua", "nhà cửa",
+            "suc khoe", "sức khỏe"
+    );
+
+    private static final Map<String, String> RESCUE_GOODS_MAP = Map.of(
+            "thuc an", "thức ăn",
+            "nuoc uong", "nước uống",
+            "quan ao", "quần áo",
+            "cho o", "chỗ ở",
+            "thuoc men", "thuốc men"
+    );
 
     public WebhookProcessor(String aiApiUrl, String apiKey, String model, String systemPrompt) {
         this.aiApiUrl = aiApiUrl;
@@ -76,6 +93,10 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
             try {
                 JsonObject metadata = analyzeContent(post.getContent());
 
+                String focus = null;
+                String damageCategory = null;
+                String rescueGoods = null;
+
                 if (metadata.has("cam_xuc_bai_viet") && !metadata.get("cam_xuc_bai_viet").isJsonNull()) {
                     post.setSentiment(metadata.get("cam_xuc_bai_viet").getAsString());
                 }
@@ -83,18 +104,32 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
                     post.setLocation(metadata.get("tinh_thanh").getAsString());
                 }
                 if (metadata.has("loai_bai_viet") && !metadata.get("loai_bai_viet").isJsonNull()) {
-                    post.setFocus(metadata.get("loai_bai_viet").getAsString());
+                    focus = metadata.get("loai_bai_viet").getAsString();
+                    post.setFocus(focus);
                 }
                 if (metadata.has("huong_bai_viet") && !metadata.get("huong_bai_viet").isJsonNull()) {
                     post.setDirection(metadata.get("huong_bai_viet").getAsString());
                 }
-                
-                // THÊM LOGIC ĐỂ GHI NHẬN CÁC TRƯỜNG PHỤ MỚI
+
                 if (metadata.has("damage_category") && !metadata.get("damage_category").isJsonNull()) {
-                    post.setDamageCategory(metadata.get("damage_category").getAsString());
+                    damageCategory = metadata.get("damage_category").getAsString();
                 }
                 if (metadata.has("rescue_goods") && !metadata.get("rescue_goods").isJsonNull()) {
-                    post.setRescueGoods(metadata.get("rescue_goods").getAsString());
+                    rescueGoods = metadata.get("rescue_goods").getAsString();
+                }
+
+                String normalizedDamage = normalizeDamageCategory(damageCategory);
+                String normalizedRescue = normalizeRescueGoods(rescueGoods);
+
+                if ("damage".equalsIgnoreCase(focus)) {
+                    post.setDamageCategory(normalizedDamage);
+                    post.setRescueGoods(null);
+                } else if ("rescue".equalsIgnoreCase(focus)) {
+                    post.setDamageCategory(null);
+                    post.setRescueGoods(normalizedRescue);
+                } else {
+                    post.setDamageCategory(normalizedDamage);
+                    post.setRescueGoods(normalizedRescue);
                 }
 
                 enrichedPosts.add(post);
@@ -117,37 +152,45 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
         return enrichedPosts;
     }
 
+
+
     private JsonObject analyzeContent(String content) throws CrawlerException {
         if (aiApiUrl == null) {
             return generateMockMetadata(content);
         }
 
         try {
-            HttpPost httpPost = new HttpPost(aiApiUrl);
+            String targetUrl = aiApiUrl;
+            if (apiKey != null && !apiKey.isEmpty() && !aiApiUrl.contains("key=")) {
+                targetUrl = aiApiUrl + (aiApiUrl.contains("?") ? "&" : "?") + "key=" + apiKey;
+            }
+
+            HttpPost httpPost = new HttpPost(targetUrl);
 
             JsonObject requestBody = new JsonObject();
-            requestBody.addProperty("model", model);
 
-            JsonArray messages = new JsonArray();
-            JsonObject systemMessage = new JsonObject();
-            systemMessage.addProperty("role", "system");
-            systemMessage.addProperty("content", systemPrompt);
-            messages.add(systemMessage);
+            if (systemPrompt != null && !systemPrompt.isEmpty()) {
+                JsonObject systemInstruction = new JsonObject();
+                JsonArray systemParts = new JsonArray();
+                JsonObject systemText = new JsonObject();
+                systemText.addProperty("text", systemPrompt);
+                systemParts.add(systemText);
+                systemInstruction.add("parts", systemParts);
+                requestBody.add("system_instruction", systemInstruction);
+            }
 
-            JsonObject userMessage = new JsonObject();
-            userMessage.addProperty("role", "user");
-            userMessage.addProperty("content", content);
-            messages.add(userMessage);
-
-            requestBody.add("messages", messages);
-            requestBody.addProperty("temperature", 0.0);
+            JsonArray contents = new JsonArray();
+            JsonObject userContent = new JsonObject();
+            JsonArray parts = new JsonArray();
+            JsonObject userText = new JsonObject();
+            userText.addProperty("text", content);
+            parts.add(userText);
+            userContent.add("parts", parts);
+            contents.add(userContent);
+            requestBody.add("contents", contents);
 
             StringEntity entity = new StringEntity(gson.toJson(requestBody), ContentType.APPLICATION_JSON);
             httpPost.setEntity(entity);
-
-            if (apiKey != null && !apiKey.isEmpty()) {
-                httpPost.addHeader("Authorization", "Bearer " + apiKey);
-            }
 
             try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
                 int statusCode = response.getCode();
@@ -168,6 +211,25 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
     private JsonObject parseAiResponse(String responseBody) throws CrawlerException {
         try {
             JsonObject wrapper = JsonParser.parseString(responseBody).getAsJsonObject();
+
+            // Google Generative Language API response format
+            if (wrapper.has("candidates")) {
+                JsonArray candidates = wrapper.getAsJsonArray("candidates");
+                if (candidates != null && !candidates.isEmpty()) {
+                    JsonObject firstCandidate = candidates.get(0).getAsJsonObject();
+                    if (firstCandidate.has("content")) {
+                        JsonObject content = firstCandidate.getAsJsonObject("content");
+                        JsonArray parts = content.getAsJsonArray("parts");
+                        if (parts != null && !parts.isEmpty()) {
+                            JsonObject firstPart = parts.get(0).getAsJsonObject();
+                            if (firstPart.has("text")) {
+                                String output = firstPart.get("text").getAsString();
+                                return extractJsonContent(output, responseBody);
+                            }
+                        }
+                    }
+                }
+            }
 
             if (wrapper.has("choices")) {
                 JsonArray choices = wrapper.getAsJsonArray("choices");
@@ -251,13 +313,13 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
         
         // --- LOGIC BỊA ĐẶT CHO CÁC TRƯỜNG PHỤ (BẮT BUỘC) ---
         if ("damage".equals(focus)) {
-            String[] damageTypes = {"hạ tầng", "nông nghiệp", "nhà cửa", "sức khỏe"}; // LOẠI BỎ 'KHÁC'
+            String[] damageTypes = {"hạ tầng", "nông nghiệp", "nhà cửa", "sức khỏe"}; // LOAI BO "KHAC"
             String damage = damageTypes[(int) (Math.random() * damageTypes.length)];
             metadata.addProperty("damage_category", damage);
             // BẮT BUỘC NULL - sử dụng add() thay vì addProperty() cho JsonNull
             metadata.add("rescue_goods", com.google.gson.JsonNull.INSTANCE);
         } else if ("rescue".equals(focus)) {
-            String[] rescueTypes = {"thức ăn", "nước uống", "quần áo", "chỗ ở", "thuốc men"}; // LOẠI BỎ 'KHÁC'
+            String[] rescueTypes = {"thức ăn", "nước uống", "quần áo", "chỗ ở", "thuốc men"}; // LOAI BO "KHAC"
             String rescue = rescueTypes[(int) (Math.random() * rescueTypes.length)];
             metadata.addProperty("rescue_goods", rescue);
             // BẮT BUỘC NULL - sử dụng add() thay vì addProperty() cho JsonNull
@@ -265,6 +327,33 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
         }
 
         return metadata;
+    }
+
+
+    private String normalizeDamageCategory(String value) {
+        return normalizeChoice(value, DAMAGE_CATEGORY_MAP);
+    }
+
+    private String normalizeRescueGoods(String value) {
+        return normalizeChoice(value, RESCUE_GOODS_MAP);
+    }
+
+    private String normalizeChoice(String value, Map<String, String> allowed) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String key = stripAccents(value).toLowerCase().trim();
+        for (Map.Entry<String, String> entry : allowed.entrySet()) {
+            if (key.contains(entry.getKey())) {
+                return entry.getValue();
+            }
+        }
+        return null;
+    }
+
+    private String stripAccents(String input) {
+        return Normalizer.normalize(input, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "");
     }
 
     @Override
