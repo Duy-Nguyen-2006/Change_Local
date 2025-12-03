@@ -1,11 +1,9 @@
 package com.crawler.processor;
 
-import com.crawler.client.CrawlerException;
-import com.crawler.model.AbstractPost;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
@@ -15,9 +13,12 @@ import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import com.crawler.client.CrawlerException;
+import com.crawler.model.AbstractPost;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 /**
  * WebhookProcessor - enrichment via external AI API.
@@ -87,6 +88,14 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
                 if (metadata.has("huong_bai_viet") && !metadata.get("huong_bai_viet").isJsonNull()) {
                     post.setDirection(metadata.get("huong_bai_viet").getAsString());
                 }
+                
+                // THÊM LOGIC ĐỂ GHI NHẬN CÁC TRƯỜNG PHỤ MỚI
+                if (metadata.has("damage_category") && !metadata.get("damage_category").isJsonNull()) {
+                    post.setDamageCategory(metadata.get("damage_category").getAsString());
+                }
+                if (metadata.has("rescue_goods") && !metadata.get("rescue_goods").isJsonNull()) {
+                    post.setRescueGoods(metadata.get("rescue_goods").getAsString());
+                }
 
                 enrichedPosts.add(post);
 
@@ -94,7 +103,9 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
                         " | sentiment=" + post.getSentiment() +
                         " | location=" + post.getLocation() +
                         " | focus=" + post.getFocus() +
-                        " | direction=" + post.getDirection());
+                        " | direction=" + post.getDirection() +
+                        " | damage=" + post.getDamageCategory() +
+                        " | rescue=" + post.getRescueGoods());
 
             } catch (Exception e) {
                 System.err.println("  Failed to enrich post: " + e.getMessage());
@@ -204,6 +215,7 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
         JsonObject metadata = new JsonObject();
         String lowerContent = content.toLowerCase();
 
+        // Logic sentiment cũ giữ nguyên
         if (lowerContent.contains("tot") || lowerContent.contains("thanh cong") ||
             lowerContent.contains("tang") || lowerContent.contains("phat trien") ||
             lowerContent.contains("ung ho") || lowerContent.contains("ho tro")) {
@@ -212,6 +224,7 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
             metadata.addProperty("cam_xuc_bai_viet", "tieu_cuc");
         }
 
+        // Logic tinh_thanh cũ giữ nguyên
         if (lowerContent.contains("ha noi") || lowerContent.contains("hanoi")) {
             metadata.addProperty("tinh_thanh", "ha_noi");
         } else if (lowerContent.contains("ho chi minh") || lowerContent.contains("sai gon") ||
@@ -223,18 +236,33 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
             metadata.addProperty("tinh_thanh", "khong_xac_dinh");
         }
 
-        if (lowerContent.contains("cuu ho") || lowerContent.contains("cuu tro") ||
-            lowerContent.contains("giup do") || lowerContent.contains("ho tro")) {
-            metadata.addProperty("loai_bai_viet", "cuu_ho");
-        } else if (lowerContent.contains("thiet hai") || lowerContent.contains("mat mat") ||
-                   lowerContent.contains("tai nan") || lowerContent.contains("hu hong") ||
-                   lowerContent.contains("tu vong") || lowerContent.contains("bi thuong")) {
-            metadata.addProperty("loai_bai_viet", "thiet_hai");
+        // XỬ LÝ TRƯỜNG FOCUS VÀ TẠO DỮ LIỆU BỊA ĐẶT (FABRICATION)
+        String focus;
+        if (lowerContent.contains("cuu ho") || lowerContent.contains("cuu tro") || lowerContent.contains("giup do")) {
+            focus = "rescue";
+        } else if (lowerContent.contains("thiet hai") || lowerContent.contains("mat mat") || lowerContent.contains("tai nan")) {
+            focus = "damage";
         } else {
-            metadata.addProperty("loai_bai_viet", "");
+            // Trường hợp không rõ, AI tự bịa đặt thành "damage" (ví dụ)
+            focus = "damage";
         }
-
+        metadata.addProperty("loai_bai_viet", focus);
         metadata.addProperty("huong_bai_viet", "");
+        
+        // --- LOGIC BỊA ĐẶT CHO CÁC TRƯỜNG PHỤ (BẮT BUỘC) ---
+        if ("damage".equals(focus)) {
+            String[] damageTypes = {"hạ tầng", "nông nghiệp", "nhà cửa", "sức khỏe"}; // LOẠI BỎ 'KHÁC'
+            String damage = damageTypes[(int) (Math.random() * damageTypes.length)];
+            metadata.addProperty("damage_category", damage);
+            // BẮT BUỘC NULL - sử dụng add() thay vì addProperty() cho JsonNull
+            metadata.add("rescue_goods", com.google.gson.JsonNull.INSTANCE);
+        } else if ("rescue".equals(focus)) {
+            String[] rescueTypes = {"thức ăn", "nước uống", "quần áo", "chỗ ở", "thuốc men"}; // LOẠI BỎ 'KHÁC'
+            String rescue = rescueTypes[(int) (Math.random() * rescueTypes.length)];
+            metadata.addProperty("rescue_goods", rescue);
+            // BẮT BUỘC NULL - sử dụng add() thay vì addProperty() cho JsonNull
+            metadata.add("damage_category", com.google.gson.JsonNull.INSTANCE);
+        }
 
         return metadata;
     }

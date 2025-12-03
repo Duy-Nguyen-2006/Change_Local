@@ -9,7 +9,9 @@ public class SocialPost extends AbstractPost {
     private long reaction;
     private LocalDate createdDate;
 
-    public static final String[] HEADER = {"date", "content", "platform", "reaction", "engagement_score"};
+    public static final String[] HEADER = {"date", "content", "platform", "reaction", 
+        "engagement_score", "sentiment", "location", "focus", "direction",
+        "damage_category", "rescue_goods"};
 
     public SocialPost(String sourceId, String content, String platform, LocalDate createdDate, long reaction) {
         super(sourceId, content, platform);
@@ -50,7 +52,13 @@ public class SocialPost extends AbstractPost {
             getContent(),
             getPlatform(),
             Long.toString(reaction),
-            Long.toString(getEngagementScore())
+            Long.toString(getEngagementScore()),
+            getSentiment() != null ? getSentiment() : "N/A",
+            getLocation() != null ? getLocation() : "N/A",
+            getFocus() != null ? getFocus() : "N/A",
+            getDirection() != null ? getDirection() : "N/A",
+            getDamageCategory() != null ? getDamageCategory() : "N/A",
+            getRescueGoods() != null ? getRescueGoods() : "N/A"
         };
     }
 

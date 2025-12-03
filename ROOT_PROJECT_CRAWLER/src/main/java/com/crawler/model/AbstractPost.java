@@ -16,6 +16,10 @@ public abstract class AbstractPost {
     private String location;
     private String focus;
     private String direction;
+    
+    // THÊM CÁC TRƯỜNG MỚI ĐỂ LƯU DANH MỤC PHỤ (Damage/Rescue)
+    private String damageCategory;
+    private String rescueGoods;
 
     /**
      * Constructor chung cho lớp con gọi.
@@ -80,6 +84,24 @@ public abstract class AbstractPost {
 
     public void setDirection(String direction) {
         this.direction = direction;
+    }
+
+    // ========== GETTERS & SETTERS MỚI CHO CÁC TRƯỜNG PHỤ ==========
+    
+    public String getDamageCategory() {
+        return damageCategory;
+    }
+
+    public void setDamageCategory(String damageCategory) {
+        this.damageCategory = damageCategory;
+    }
+
+    public String getRescueGoods() {
+        return rescueGoods;
+    }
+
+    public void setRescueGoods(String rescueGoods) {
+        this.rescueGoods = rescueGoods;
     }
 
     // ========== PHƯƠNG THỨC TRỪU TƯỢNG ==========

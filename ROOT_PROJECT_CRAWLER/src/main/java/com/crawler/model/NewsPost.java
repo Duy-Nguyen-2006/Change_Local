@@ -10,7 +10,9 @@ public class NewsPost extends AbstractPost {
     private String title;
     private int comments;
 
-    public static final String[] HEADER = {"date", "title", "content", "platform", "comments", "engagement_score"};
+    public static final String[] HEADER = {"date", "title", "content", "platform", "comments", 
+        "engagement_score", "sentiment", "location", "focus", "direction",
+        "damage_category", "rescue_goods"};
 
     public NewsPost(String sourceId, LocalDate postDate, String title, String content, String platform, int comments) {
         super(sourceId, content, platform);
@@ -57,7 +59,13 @@ public class NewsPost extends AbstractPost {
             getContent(),
             getPlatform(),
             Integer.toString(comments),
-            Long.toString(getEngagementScore())
+            Long.toString(getEngagementScore()),
+            getSentiment() != null ? getSentiment() : "N/A",
+            getLocation() != null ? getLocation() : "N/A",
+            getFocus() != null ? getFocus() : "N/A",
+            getDirection() != null ? getDirection() : "N/A",
+            getDamageCategory() != null ? getDamageCategory() : "N/A",
+            getRescueGoods() != null ? getRescueGoods() : "N/A"
         };
     }
 
