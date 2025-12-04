@@ -27,10 +27,10 @@ import com.crawler.repository.IPostRepository;
  * 1. Check repository.isCached(keyword)
  * 2. Nếu cached → Load từ Repository (nhanh, không tốn API calls)
  * 3. Nếu không:
- *    a. Crawl từ ISearchClient
- *    b. Enrich qua IDataProcessor (gọi webhook)
- *    c. Save vào Repository
- *    d. Return enriched posts
+ * a. Crawl từ ISearchClient
+ * b. Enrich qua IDataProcessor (gọi webhook)
+ * c. Save vào Repository
+ * d. Return enriched posts
  *
  * SOLID PRINCIPLES:
  * - SRP: Chỉ có MỘT trách nhiệm - Orchestration và caching logic
@@ -42,7 +42,7 @@ public class PostService implements IPostService {
 
     private final IPostRepository repository;
     private final ISearchClient crawler;
-    private final List<IDataProcessor> processors;
+    private final List<IDataProcessor<? super AbstractPost>> processors;
 
     /**
      * Constructor Injection - DEPENDENCY INJECTION PATTERN
@@ -52,7 +52,7 @@ public class PostService implements IPostService {
      * @param crawler Crawler để crawl posts mới
      * @param processor Processor để enrich posts (webhook, filtering...)
      */
-    public PostService(IPostRepository repository, ISearchClient crawler, IDataProcessor processor) {
+    public PostService(IPostRepository repository, ISearchClient crawler, IDataProcessor<? super AbstractPost> processor) {
         this(repository, crawler, List.of(processor));
     }
 
@@ -62,7 +62,7 @@ public class PostService implements IPostService {
      * @param crawler Crawler để crawl posts mới
      * @param processors Danh sách processor (Filter/Webhook/Validation...)
      */
-    public PostService(IPostRepository repository, ISearchClient crawler, List<IDataProcessor> processors) {
+    public PostService(IPostRepository repository, ISearchClient crawler, List<IDataProcessor<? super AbstractPost>> processors) {
         if (repository == null || crawler == null || processors == null) {
             throw new IllegalArgumentException("All dependencies (repository, crawler, processors) must be non-null!");
         }
@@ -85,17 +85,16 @@ public class PostService implements IPostService {
      * Application layer (Main/TestRunner) phải đảm bảo crawler đã được initialize trước khi gọi service.
      */
     @Override
-    // ĐỔI TÊN THAM SỐ THÀNH KEYWORD ĐỂ ĐỒNG BỘ VỚI INTERFACE IPostService
     public List<? extends AbstractPost> getPosts(String keyword, LocalDate startDate, LocalDate endDate) throws CrawlerException {
-        // TẠO CACHE KEY: Keyword + DateRange
-        String cacheKey = String.format("%s_%s_%s", keyword, startDate, endDate).replace(" ", "_");
+        // 1. TẠO CACHE KEY: Keyword + DateRange (uỷ quyền cho CacheKeyFactory để tách SRP)
+        String cacheKey = CacheKeyFactory.createKey(keyword, startDate, endDate);
 
         System.out.println("[PostService] Checking cache for key: " + cacheKey);
 
-        // 1. Check Cache
-        if (repository.isCached(cacheKey)) {
+        List<? extends AbstractPost> cached = repository.load(cacheKey);
+        if (cached != null && !cached.isEmpty()) {
             System.out.println("-> Cache HIT!");
-            return repository.load(cacheKey);
+            return new ArrayList<>(cached);
         }
 
         System.out.println("-> Cache MISS! Crawling...");
@@ -113,13 +112,24 @@ public class PostService implements IPostService {
         return processedPosts;
     }
 
+    @SuppressWarnings("unchecked")
     private List<? extends AbstractPost> applyProcessors(List<? extends AbstractPost> rawPosts) throws CrawlerException {
-        List<? extends AbstractPost> current = rawPosts;
-        for (IDataProcessor processor : this.processors) {
+        // Khởi tạo List trung gian là List<AbstractPost> để tương thích với processor 
+        // và tránh việc khởi tạo/ép kiểu lặp lại nhiều lần trong vòng lặp.
+        // Chấp nhận unchecked cast duy nhất ở đây.
+        List<AbstractPost> current = new ArrayList<>((List<AbstractPost>) rawPosts); 
+
+        for (IDataProcessor<? super AbstractPost> processor : this.processors) {
             if (processor == null) {
                 continue;
             }
-            current = processor.process(current);
+            
+            // Ép kiểu processor thành IDataProcessor<AbstractPost> để gọi phương thức process 
+            // một cách rõ ràng và an toàn nhất có thể trong khuôn khổ của Generics.
+            IDataProcessor<AbstractPost> concreteProcessor = (IDataProcessor<AbstractPost>) processor;
+            
+            // Process và gán lại cho list hiện tại.
+            current = concreteProcessor.process(current);
         }
         return current;
     }
