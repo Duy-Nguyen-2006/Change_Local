@@ -20,7 +20,6 @@ import com.crawler.config.CrawlerConfig;
 import com.crawler.model.AbstractPost;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
-import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -123,19 +122,13 @@ public class WebhookProcessor implements IDataProcessor<AbstractPost>, AutoClose
                     rescueGoods = metadata.get("rescue_goods").getAsString();
                 }
 
+                // LUÔN LUÔN SET CẢ HAI GIÁ TRỊ - TUYỆT ĐỐI KHÔNG NULL
                 String normalizedDamage = normalizeDamageCategory(damageCategory);
                 String normalizedRescue = normalizeRescueGoods(rescueGoods);
-
-                if ("damage".equalsIgnoreCase(focus)) {
-                    post.setDamageCategory(normalizedDamage);
-                    post.setRescueGoods(null);
-                } else if ("rescue".equalsIgnoreCase(focus)) {
-                    post.setDamageCategory(null);
-                    post.setRescueGoods(normalizedRescue);
-                } else {
-                    post.setDamageCategory(normalizedDamage);
-                    post.setRescueGoods(normalizedRescue);
-                }
+                
+                // Nếu normalize trả về null (không match), dùng giá trị gốc
+                post.setDamageCategory(normalizedDamage != null ? normalizedDamage : damageCategory);
+                post.setRescueGoods(normalizedRescue != null ? normalizedRescue : rescueGoods);
 
                 enrichedPosts.add(post);
 
@@ -382,52 +375,49 @@ public class WebhookProcessor implements IDataProcessor<AbstractPost>, AutoClose
         }
         metadata.addProperty("huong_bai_viet", direction);
         
-        // === 5. DAMAGE_CATEGORY hoặc RESCUE_GOODS (TÙY FOCUS) ===
-        if ("damage".equals(focus)) {
-            String[] damageTypes = {"hạ tầng", "nông nghiệp", "nhà cửa", "sức khỏe"};
-            String damage;
-            if (lowerContent.contains("đường") || lowerContent.contains("cầu") ||
-                lowerContent.contains("điện") || lowerContent.contains("nước")) {
-                damage = "hạ tầng";
-            } else if (lowerContent.contains("lúa") || lowerContent.contains("rau") ||
-                       lowerContent.contains("cây trồng") || lowerContent.contains("vật nuôi")) {
-                damage = "nông nghiệp";
-            } else if (lowerContent.contains("nhà") || lowerContent.contains("mái") ||
-                       lowerContent.contains("tường") || lowerContent.contains("sập")) {
-                damage = "nhà cửa";
-            } else if (lowerContent.contains("bị thương") || lowerContent.contains("chết") ||
-                       lowerContent.contains("y tế") || lowerContent.contains("bệnh")) {
-                damage = "sức khỏe";
-            } else {
-                // BỊA ĐẶT: Random
-                damage = damageTypes[(int) (Math.random() * damageTypes.length)];
-            }
-            metadata.addProperty("damage_category", damage);
-            metadata.add("rescue_goods", JsonNull.INSTANCE);
-        } else if ("rescue".equals(focus)) {
-            String[] rescueTypes = {"thức ăn", "nước uống", "quần áo", "chỗ ở", "thuốc men"};
-            String rescue;
-            if (lowerContent.contains("gạo") || lowerContent.contains("mì") ||
-                lowerContent.contains("thực phẩm") || lowerContent.contains("ăn")) {
-                rescue = "thức ăn";
-            } else if (lowerContent.contains("nước") || lowerContent.contains("uống")) {
-                rescue = "nước uống";
-            } else if (lowerContent.contains("áo") || lowerContent.contains("quần") ||
-                       lowerContent.contains("chăn") || lowerContent.contains("mền")) {
-                rescue = "quần áo";
-            } else if (lowerContent.contains("nhà") || lowerContent.contains("tạm") ||
-                       lowerContent.contains("lều") || lowerContent.contains("trú")) {
-                rescue = "chỗ ở";
-            } else if (lowerContent.contains("thuốc") || lowerContent.contains("y tế") ||
-                       lowerContent.contains("băng") || lowerContent.contains("cứu thương")) {
-                rescue = "thuốc men";
-            } else {
-                // BỊA ĐẶT: Random
-                rescue = rescueTypes[(int) (Math.random() * rescueTypes.length)];
-            }
-            metadata.addProperty("rescue_goods", rescue);
-            metadata.add("damage_category", JsonNull.INSTANCE);
+        // === 5. DAMAGE_CATEGORY (LUÔN LUÔN CÓ GIÁ TRỊ - BẮT BUỘC) ===
+        String[] damageTypes = {"hạ tầng", "nông nghiệp", "nhà cửa", "sức khỏe"};
+        String damage;
+        if (lowerContent.contains("đường") || lowerContent.contains("cầu") ||
+            lowerContent.contains("điện") || lowerContent.contains("nước")) {
+            damage = "hạ tầng";
+        } else if (lowerContent.contains("lúa") || lowerContent.contains("rau") ||
+                   lowerContent.contains("cây trồng") || lowerContent.contains("vật nuôi")) {
+            damage = "nông nghiệp";
+        } else if (lowerContent.contains("nhà") || lowerContent.contains("mái") ||
+                   lowerContent.contains("tường") || lowerContent.contains("sập")) {
+            damage = "nhà cửa";
+        } else if (lowerContent.contains("bị thương") || lowerContent.contains("chết") ||
+                   lowerContent.contains("y tế") || lowerContent.contains("bệnh")) {
+            damage = "sức khỏe";
+        } else {
+            // BỊA ĐẶT: Random khi không phân tích được
+            damage = damageTypes[(int) (Math.random() * damageTypes.length)];
         }
+        metadata.addProperty("damage_category", damage);
+        
+        // === 6. RESCUE_GOODS (LUÔN LUÔN CÓ GIÁ TRỊ - BẮT BUỘC) ===
+        String[] rescueTypes = {"thức ăn", "nước uống", "quần áo", "chỗ ở", "thuốc men"};
+        String rescue;
+        if (lowerContent.contains("gạo") || lowerContent.contains("mì") ||
+            lowerContent.contains("thực phẩm") || lowerContent.contains("ăn")) {
+            rescue = "thức ăn";
+        } else if (lowerContent.contains("nước") || lowerContent.contains("uống")) {
+            rescue = "nước uống";
+        } else if (lowerContent.contains("áo") || lowerContent.contains("quần") ||
+                   lowerContent.contains("chăn") || lowerContent.contains("mền")) {
+            rescue = "quần áo";
+        } else if (lowerContent.contains("nhà") || lowerContent.contains("tạm") ||
+                   lowerContent.contains("lều") || lowerContent.contains("trú")) {
+            rescue = "chỗ ở";
+        } else if (lowerContent.contains("thuốc") || lowerContent.contains("y tế") ||
+                   lowerContent.contains("băng") || lowerContent.contains("cứu thương")) {
+            rescue = "thuốc men";
+        } else {
+            // BỊA ĐẶT: Random khi không phân tích được
+            rescue = rescueTypes[(int) (Math.random() * rescueTypes.length)];
+        }
+        metadata.addProperty("rescue_goods", rescue);
 
         return metadata;
     }

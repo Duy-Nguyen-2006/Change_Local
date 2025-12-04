@@ -60,12 +60,12 @@ public class NewsPost extends AbstractPost {
             getPlatform(),
             Integer.toString(comments),
             Long.toString(getEngagementScore()),
-            getSentiment() != null ? getSentiment() : "N/A",
-            getLocation() != null ? getLocation() : "N/A",
-            getFocus() != null ? getFocus() : "N/A",
-            getDirection() != null ? getDirection() : "N/A",
-            getDamageCategory() != null ? getDamageCategory() : "N/A",
-            getRescueGoods() != null ? getRescueGoods() : "N/A"
+            getSentiment(),
+            getLocation(),
+            getFocus(),
+            getDirection(),
+            getDamageCategory(),
+            getRescueGoods()
         };
     }
 
