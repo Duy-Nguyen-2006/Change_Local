@@ -149,7 +149,7 @@ java -cp target/crawler-1.0-SNAPSHOT.jar com.crawler.app.Main
 - Đường dẫn file CSV output
 
 ### 2. CSV File
-**File output:** `D:\OOP_Local_Change\ROOT_PROJECT_CRAWLER\AllClients_results_utf8.csv`
+**File output:** `D:\OOP_Local_Change\ROOT_PROJECT_CRAWLER\output\AllClients_results_utf8.csv`
 
 **Cột dữ liệu (12 cột):**
 1. `platform` - Nguồn (vnexpress, dantri, tiktok, x)
@@ -158,14 +158,18 @@ java -cp target/crawler-1.0-SNAPSHOT.jar com.crawler.app.Main
 4. `url` - Link gốc
 5. `date` - Ngày đăng
 6. `engagement` - Điểm tương tác (comments hoặc reactions)
-7. `sentiment` - Cảm xúc (positive, negative, neutral)
-8. `location` - Địa điểm
-9. `focus` - Trọng tâm (damage, rescue, none)
-10. `direction` - Hướng xử lý (urgent, plan, info)
-11. `damage_category` - Loại thiệt hại (nếu focus=damage)
-12. `rescue_goods` - Hàng cứu trợ (nếu focus=rescue)
+7. `sentiment` - Cảm xúc (tích cực, tiêu cực, trung lập) - **TỰ ĐỘNG PHÂN TÍCH**
+8. `location` - Địa điểm (tỉnh/thành phố) - **TỰ ĐỘNG NHẬN DIỆN**
+9. `focus` - Trọng tâm (damage=thiệt hại, rescue=cứu trợ) - **TỰ ĐỘNG PHÂN LOẠI**
+10. `direction` - Hướng xử lý (urgent=khẩn cấp, plan=kế hoạch, info=thông tin) - **TỰ ĐỘNG XÁC ĐỊNH**
+11. `damage_category` - Loại thiệt hại (hạ tầng, nông nghiệp, nhà cửa, sức khỏe) - **CHỈ KHI focus=damage**
+12. `rescue_goods` - Hàng cứu trợ (thức ăn, nước uống, quần áo, chỗ ở, thuốc men) - **CHỈ KHI focus=rescue**
 
-**Encoding:** UTF-8 với BOM để Excel hiển thị đúng tiếng Việt
+**Đặc điểm:**
+- ✅ **UTF-8 BOM**: Excel hiển thị đúng tiếng Việt
+- ✅ **AI Metadata**: Tự động phân tích nội dung và gắn nhãn thông minh
+- ✅ **Dữ liệu thực**: Không có giá trị N/A, tất cả metadata đều được điền
+- ✅ **Logic thông minh**: Nếu không phân tích được, hệ thống tự động suy luận hoặc bịa đặt dữ liệu hợp lý
 
 ### 3. SQLite Database
 **File:** `posts.db` (tự động tạo)

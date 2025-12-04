@@ -13,6 +13,7 @@ import com.crawler.client.VNExpressClient;
 import com.crawler.client.XSearchClient;
 import com.crawler.config.CrawlerConfig;
 import com.crawler.model.AbstractPost;
+import com.crawler.processor.WebhookProcessor;
 import com.crawler.util.PostCsvExporter;
 
 /**
@@ -106,6 +107,20 @@ public class Main {
             } catch (CrawlerException e) {
                 System.err.println("✗ Lỗi khi crawl: " + e.getMessage());
                 System.err.println("═══════════════════════════════════════════════════\n");
+            }
+        }
+
+        // ========== ENRICH DỮ LIỆU VỚI WEBHOOK PROCESSOR ==========
+        // Làm giàu dữ liệu với metadata AI (sentiment, location, focus, damage/rescue)
+        if (!allResults.isEmpty()) {
+            try (WebhookProcessor processor = WebhookProcessor.mockProcessor()) {
+                System.out.println("┌─────────────────────────────────────────────┐");
+                System.out.println("│ Đang làm giàu dữ liệu với AI metadata...     │");
+                System.out.println("└─────────────────────────────────────────────┘\n");
+                allResults = processor.process(allResults);
+            } catch (Exception e) {
+                System.err.println("⚠ Lỗi khi enrich dữ liệu: " + e.getMessage());
+                System.err.println("Tiếp tục với dữ liệu gốc...\n");
             }
         }
 

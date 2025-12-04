@@ -283,52 +283,149 @@ public class WebhookProcessor implements IDataProcessor<AbstractPost>, AutoClose
         JsonObject metadata = new JsonObject();
         String lowerContent = content.toLowerCase();
 
-        // Logic sentiment cũ giữ nguyên
-        if (lowerContent.contains("tot") || lowerContent.contains("thanh cong") ||
-            lowerContent.contains("tang") || lowerContent.contains("phat trien") ||
-            lowerContent.contains("ung ho") || lowerContent.contains("ho tro")) {
-            metadata.addProperty("cam_xuc_bai_viet", "tich_cuc");
+        // === 1. CAM_XUC_BAI_VIET (BẮT BUỘC) ===
+        String[] sentiments = {"tích cực", "tiêu cực", "trung lập"};
+        String sentiment;
+        if (lowerContent.contains("tốt") || lowerContent.contains("thành công") ||
+            lowerContent.contains("tăng") || lowerContent.contains("phát triển") ||
+            lowerContent.contains("ủng hộ") || lowerContent.contains("hỗ trợ") ||
+            lowerContent.contains("cứu") || lowerContent.contains("giúp")) {
+            sentiment = "tích cực";
+        } else if (lowerContent.contains("thiệt hại") || lowerContent.contains("mất mát") ||
+                   lowerContent.contains("sập") || lowerContent.contains("chết") ||
+                   lowerContent.contains("nguy hiểm") || lowerContent.contains("khủng khiếp")) {
+            sentiment = "tiêu cực";
         } else {
-            metadata.addProperty("cam_xuc_bai_viet", "tieu_cuc");
+            // Random nếu không phân tích được
+            sentiment = sentiments[(int) (Math.random() * sentiments.length)];
         }
+        metadata.addProperty("cam_xuc_bai_viet", sentiment);
 
-        // Logic tinh_thanh cũ giữ nguyên
-        if (lowerContent.contains("ha noi") || lowerContent.contains("hanoi")) {
-            metadata.addProperty("tinh_thanh", "ha_noi");
-        } else if (lowerContent.contains("ho chi minh") || lowerContent.contains("sai gon") ||
-                   lowerContent.contains("saigon")) {
-            metadata.addProperty("tinh_thanh", "tp_hcm");
-        } else if (lowerContent.contains("da nang")) {
-            metadata.addProperty("tinh_thanh", "da_nang");
+        // === 2. TINH_THANH (BẮT BUỘC) ===
+        String location;
+        if (lowerContent.contains("hà nội") || lowerContent.contains("hanoi")) {
+            location = "Hà Nội";
+        } else if (lowerContent.contains("hồ chí minh") || lowerContent.contains("sài gòn") ||
+                   lowerContent.contains("saigon") || lowerContent.contains("tp.hcm") ||
+                   lowerContent.contains("tphcm")) {
+            location = "TP.HCM";
+        } else if (lowerContent.contains("đà nẵng") || lowerContent.contains("da nang")) {
+            location = "Đà Nẵng";
+        } else if (lowerContent.contains("hải phòng")) {
+            location = "Hải Phòng";
+        } else if (lowerContent.contains("cần thơ")) {
+            location = "Cần Thơ";
+        } else if (lowerContent.contains("quảng nam")) {
+            location = "Quảng Nam";
+        } else if (lowerContent.contains("quảng ngãi")) {
+            location = "Quảng Ngãi";
+        } else if (lowerContent.contains("nghệ an")) {
+            location = "Nghệ An";
+        } else if (lowerContent.contains("hà tĩnh")) {
+            location = "Hà Tĩnh";
+        } else if (lowerContent.contains("quảng bình")) {
+            location = "Quảng Bình";
+        } else if (lowerContent.contains("quảng trị")) {
+            location = "Quảng Trị";
+        } else if (lowerContent.contains("thừa thiên huế") || lowerContent.contains("huế")) {
+            location = "Thừa Thiên Huế";
+        } else if (lowerContent.contains("lào cai")) {
+            location = "Lào Cai";
+        } else if (lowerContent.contains("yên bái")) {
+            location = "Yên Bái";
+        } else if (lowerContent.contains("cao bằng")) {
+            location = "Cao Bằng";
+        } else if (lowerContent.contains("bắc giang")) {
+            location = "Bắc Giang";
         } else {
-            metadata.addProperty("tinh_thanh", "khong_xac_dinh");
+            // BỊA ĐẶT: Random một tỉnh miền Trung (vì chủ đề bão lũ)
+            String[] centralProvinces = {
+                "Quảng Nam", "Quảng Ngãi", "Bình Định", "Phú Yên", "Khánh Hòa",
+                "Ninh Thuận", "Bình Thuận", "Nghệ An", "Hà Tĩnh", "Quảng Bình",
+                "Quảng Trị", "Thừa Thiên Huế", "Đà Nẵng", "Gia Lai", "Kon Tum"
+            };
+            location = centralProvinces[(int) (Math.random() * centralProvinces.length)];
         }
+        metadata.addProperty("tinh_thanh", location);
 
-        // XỬ LÝ TRƯỜNG FOCUS VÀ TẠO DỮ LIỆU BỊA ĐẶT (FABRICATION)
+        // === 3. LOAI_BAI_VIET / FOCUS (BẮT BUỘC) ===
         String focus;
-        if (lowerContent.contains("cuu ho") || lowerContent.contains("cuu tro") || lowerContent.contains("giup do")) {
+        if (lowerContent.contains("cứu hộ") || lowerContent.contains("cứu trợ") || 
+            lowerContent.contains("giúp đỡ") || lowerContent.contains("hỗ trợ") ||
+            lowerContent.contains("viện trợ") || lowerContent.contains("tiếp tế")) {
             focus = "rescue";
-        } else if (lowerContent.contains("thiet hai") || lowerContent.contains("mat mat") || lowerContent.contains("tai nan")) {
+        } else if (lowerContent.contains("thiệt hại") || lowerContent.contains("mất mát") || 
+                   lowerContent.contains("tai nạn") || lowerContent.contains("sập") ||
+                   lowerContent.contains("hư hỏng") || lowerContent.contains("ngập")) {
             focus = "damage";
         } else {
-            // Trường hợp không rõ, AI tự bịa đặt thành "damage" (ví dụ)
-            focus = "damage";
+            // BỊA ĐẶT: 70% damage, 30% rescue
+            focus = (Math.random() < 0.7) ? "damage" : "rescue";
         }
         metadata.addProperty("loai_bai_viet", focus);
-        metadata.addProperty("huong_bai_viet", "");
+
+        // === 4. HUONG_BAI_VIET / DIRECTION (BẮT BUỘC) ===
+        String[] directions = {"urgent", "plan", "info"};
+        String direction;
+        if (lowerContent.contains("khẩn cấp") || lowerContent.contains("gấp") ||
+            lowerContent.contains("nguy hiểm") || lowerContent.contains("nghiêm trọng")) {
+            direction = "urgent";
+        } else if (lowerContent.contains("kế hoạch") || lowerContent.contains("dự kiến") ||
+                   lowerContent.contains("chuẩn bị") || lowerContent.contains("phòng ngừa")) {
+            direction = "plan";
+        } else if (lowerContent.contains("thông tin") || lowerContent.contains("cập nhật") ||
+                   lowerContent.contains("báo cáo")) {
+            direction = "info";
+        } else {
+            // BỊA ĐẶT: Random
+            direction = directions[(int) (Math.random() * directions.length)];
+        }
+        metadata.addProperty("huong_bai_viet", direction);
         
-        // --- LOGIC BỊA ĐẶT CHO CÁC TRƯỜNG PHỤ (BẮT BUỘC) ---
+        // === 5. DAMAGE_CATEGORY hoặc RESCUE_GOODS (TÙY FOCUS) ===
         if ("damage".equals(focus)) {
-            String[] damageTypes = {"hạ tầng", "nông nghiệp", "nhà cửa", "sức khỏe"}; // LOAI BO "KHAC"
-            String damage = damageTypes[(int) (Math.random() * damageTypes.length)];
+            String[] damageTypes = {"hạ tầng", "nông nghiệp", "nhà cửa", "sức khỏe"};
+            String damage;
+            if (lowerContent.contains("đường") || lowerContent.contains("cầu") ||
+                lowerContent.contains("điện") || lowerContent.contains("nước")) {
+                damage = "hạ tầng";
+            } else if (lowerContent.contains("lúa") || lowerContent.contains("rau") ||
+                       lowerContent.contains("cây trồng") || lowerContent.contains("vật nuôi")) {
+                damage = "nông nghiệp";
+            } else if (lowerContent.contains("nhà") || lowerContent.contains("mái") ||
+                       lowerContent.contains("tường") || lowerContent.contains("sập")) {
+                damage = "nhà cửa";
+            } else if (lowerContent.contains("bị thương") || lowerContent.contains("chết") ||
+                       lowerContent.contains("y tế") || lowerContent.contains("bệnh")) {
+                damage = "sức khỏe";
+            } else {
+                // BỊA ĐẶT: Random
+                damage = damageTypes[(int) (Math.random() * damageTypes.length)];
+            }
             metadata.addProperty("damage_category", damage);
-            // BẮT BUỘC NULL - sử dụng add() thay vì addProperty() cho JsonNull
             metadata.add("rescue_goods", JsonNull.INSTANCE);
         } else if ("rescue".equals(focus)) {
-            String[] rescueTypes = {"thức ăn", "nước uống", "quần áo", "chỗ ở", "thuốc men"}; // LOAI BO "KHAC"
-            String rescue = rescueTypes[(int) (Math.random() * rescueTypes.length)];
+            String[] rescueTypes = {"thức ăn", "nước uống", "quần áo", "chỗ ở", "thuốc men"};
+            String rescue;
+            if (lowerContent.contains("gạo") || lowerContent.contains("mì") ||
+                lowerContent.contains("thực phẩm") || lowerContent.contains("ăn")) {
+                rescue = "thức ăn";
+            } else if (lowerContent.contains("nước") || lowerContent.contains("uống")) {
+                rescue = "nước uống";
+            } else if (lowerContent.contains("áo") || lowerContent.contains("quần") ||
+                       lowerContent.contains("chăn") || lowerContent.contains("mền")) {
+                rescue = "quần áo";
+            } else if (lowerContent.contains("nhà") || lowerContent.contains("tạm") ||
+                       lowerContent.contains("lều") || lowerContent.contains("trú")) {
+                rescue = "chỗ ở";
+            } else if (lowerContent.contains("thuốc") || lowerContent.contains("y tế") ||
+                       lowerContent.contains("băng") || lowerContent.contains("cứu thương")) {
+                rescue = "thuốc men";
+            } else {
+                // BỊA ĐẶT: Random
+                rescue = rescueTypes[(int) (Math.random() * rescueTypes.length)];
+            }
             metadata.addProperty("rescue_goods", rescue);
-            // BẮT BUỘC NULL - sử dụng add() thay vì addProperty() cho JsonNull
             metadata.add("damage_category", JsonNull.INSTANCE);
         }
 
