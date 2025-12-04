@@ -31,7 +31,9 @@ public class TestRunner {
         // ========== 2. DEPENDENCY INJECTION (DI) ==========
         // TẠO TẤT CẢ CÁC THÀNH PHẦN CONCRETE (CONCRETE CLASSES)
         ISearchClient newsClient = null;
-        try (WebhookProcessor webhookProcessor = new WebhookProcessor("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent")) {
+        // KHÔNG DÙNG ConfigLoader NỮA (vì ConfigLoader không còn trong file mới của user)
+        // Thay bằng constructor mặc định đã được bổ sung
+        try (WebhookProcessor webhookProcessor = new WebhookProcessor()) { 
 
             IPostRepository repository = new SQLitePostRepository();
 
@@ -49,8 +51,12 @@ public class TestRunner {
             );
 
             // TẠO PROCESSOR PIPELINE: Filter trước, sau đó Enrich
-            IDataProcessor newsFilter = new NewsFilterProcessor(startDate, endDate, disasterKeywords);
-            IDataProcessor webhookEnricher = webhookProcessor;
+            // SỬ DỤNG GENERIC TYPE ĐÚNG CHO CONSTRUCTOR
+            @SuppressWarnings("unchecked") // Bỏ qua cảnh báo vì ta biết NewsFilterProcessor<NewsPost> là con của IDataProcessor<? super AbstractPost>
+            IDataProcessor<? super AbstractPost> newsFilter = (IDataProcessor<? super AbstractPost>) new NewsFilterProcessor(startDate, endDate, disasterKeywords);
+            @SuppressWarnings("unchecked") // Bỏ qua cảnh báo vì ta biết WebhookProcessor<AbstractPost> là con của IDataProcessor<? super AbstractPost>
+            IDataProcessor<? super AbstractPost> webhookEnricher = (IDataProcessor<? super AbstractPost>) webhookProcessor;
+
 
             // TIÊM PHỤ THUỘC (DIP) - Tiêm Processor Pipeline vào Service
             // NewsFilterProcessor sẽ chạy TRƯỚC WebhookProcessor

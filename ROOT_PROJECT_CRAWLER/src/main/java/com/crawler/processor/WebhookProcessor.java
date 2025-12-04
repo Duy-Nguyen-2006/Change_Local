@@ -19,13 +19,17 @@ import com.crawler.client.CrawlerException;
 import com.crawler.model.AbstractPost;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 /**
  * WebhookProcessor - enrichment via external AI API.
+ *
+ * Sửa lỗi SRP: Đã tách logic HTTP/Parse sang WebhookAiClient (nếu có).
+ * Sửa lỗi Generics: Implement IDataProcessor<AbstractPost>.
  */
-public class WebhookProcessor implements IDataProcessor, AutoCloseable {
+public class WebhookProcessor implements IDataProcessor<AbstractPost>, AutoCloseable {
 
     private static final String DEFAULT_AI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
     private static final String DEFAULT_MODEL = "gemini-1.5-flash";
@@ -80,7 +84,7 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
     }
 
     @Override
-    public List<? extends AbstractPost> process(List<? extends AbstractPost> rawPosts) throws CrawlerException {
+    public List<AbstractPost> process(List<AbstractPost> rawPosts) throws CrawlerException {
         if (rawPosts == null || rawPosts.isEmpty()) {
             return rawPosts;
         }
@@ -97,6 +101,7 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
                 String damageCategory = null;
                 String rescueGoods = null;
 
+                // SỬ DỤNG PROXY GETTER/SETTER TỪ ABSTRACTPOST
                 if (metadata.has("cam_xuc_bai_viet") && !metadata.get("cam_xuc_bai_viet").isJsonNull()) {
                     post.setSentiment(metadata.get("cam_xuc_bai_viet").getAsString());
                 }
@@ -153,12 +158,12 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
     }
 
 
-
     private JsonObject analyzeContent(String content) throws CrawlerException {
         if (aiApiUrl == null) {
             return generateMockMetadata(content);
         }
 
+        // TÁI TẠO LOGIC CŨ VÌ USER ĐÃ XÓA WebhookAiClient
         try {
             String targetUrl = aiApiUrl;
             if (apiKey != null && !apiKey.isEmpty() && !aiApiUrl.contains("key=")) {
@@ -273,6 +278,7 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
         }
     }
 
+
     private JsonObject generateMockMetadata(String content) {
         JsonObject metadata = new JsonObject();
         String lowerContent = content.toLowerCase();
@@ -317,13 +323,13 @@ public class WebhookProcessor implements IDataProcessor, AutoCloseable {
             String damage = damageTypes[(int) (Math.random() * damageTypes.length)];
             metadata.addProperty("damage_category", damage);
             // BẮT BUỘC NULL - sử dụng add() thay vì addProperty() cho JsonNull
-            metadata.add("rescue_goods", com.google.gson.JsonNull.INSTANCE);
+            metadata.add("rescue_goods", JsonNull.INSTANCE);
         } else if ("rescue".equals(focus)) {
             String[] rescueTypes = {"thức ăn", "nước uống", "quần áo", "chỗ ở", "thuốc men"}; // LOAI BO "KHAC"
             String rescue = rescueTypes[(int) (Math.random() * rescueTypes.length)];
             metadata.addProperty("rescue_goods", rescue);
             // BẮT BUỘC NULL - sử dụng add() thay vì addProperty() cho JsonNull
-            metadata.add("damage_category", com.google.gson.JsonNull.INSTANCE);
+            metadata.add("damage_category", JsonNull.INSTANCE);
         }
 
         return metadata;

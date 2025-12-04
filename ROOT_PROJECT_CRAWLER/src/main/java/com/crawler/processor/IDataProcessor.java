@@ -1,8 +1,9 @@
 package com.crawler.processor;
 
+import java.util.List;
+
 import com.crawler.client.CrawlerException;
 import com.crawler.model.AbstractPost;
-import java.util.List;
 
 /**
  * IDataProcessor - CONTRACT cho Data Processing Layer
@@ -15,25 +16,18 @@ import java.util.List;
  * SRP: Chỉ có MỘT trách nhiệm - Xử lý và làm giàu dữ liệu (Data Enrichment)
  * OCP: Có thể thêm FilterProcessor, ValidationProcessor... KHÔNG CẦN sửa code Service
  *
- * Ví dụ sử dụng:
- * 1. WebhookProcessor - Gọi API để lấy sentiment, location, focus
- * 2. FilterProcessor - Lọc bỏ posts spam (nếu cần)
- * 3. ValidationProcessor - Kiểm tra data integrity (nếu cần)
+ * POLYMORPHISM + GENERICS: Sử dụng Generics <T> để ép kiểu và loại bỏ 'instanceof'.
+ * T BẮT BUỘC phải là AbstractPost hoặc lớp con của nó.
  */
-public interface IDataProcessor {
+public interface IDataProcessor<T extends AbstractPost> {
 
     /**
      * Xử lý và làm giàu dữ liệu posts
-     * POLYMORPHISM: Nhận và trả về List<? extends AbstractPost>
-     *
-     * WebhookProcessor sẽ:
-     * - Gọi HTTP POST đến webhook API
-     * - Nhận về sentiment, location, focus
-     * - Cập nhật các trường này vào từng Post (setSentiment, setLocation, setFocus)
+     * POLYMORPHISM + GENERICS: Nhận và trả về List<T extends AbstractPost>
      *
      * @param rawPosts Danh sách posts gốc từ crawler
      * @return Danh sách posts đã được xử lý và làm giàu
      * @throws CrawlerException Nếu xử lý thất bại (ví dụ: webhook timeout)
      */
-    List<? extends AbstractPost> process(List<? extends AbstractPost> rawPosts) throws CrawlerException;
+    List<T> process(List<T> rawPosts) throws CrawlerException;
 }

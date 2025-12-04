@@ -1,23 +1,27 @@
 package com.crawler.processor;
 
-import com.crawler.client.CrawlerException;
-import com.crawler.model.AbstractPost;
-import com.crawler.model.NewsPost;
+import java.text.Normalizer;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
+
+import com.crawler.client.CrawlerException;
+import com.crawler.model.NewsPost;
 
 /**
  * NewsFilterProcessor - Tách logic lọc ra khỏi tầng crawler.
  * SRP: Chỉ chịu trách nhiệm lọc dữ liệu NewsPost theo ngày và từ khóa.
  * DIP: Được inject vào Service qua interface IDataProcessor, không gắn với crawler hay repository.
+ * OCP: Sử dụng Generics <NewsPost> để loại bỏ 'instanceof'.
  */
-public class NewsFilterProcessor implements IDataProcessor {
+public class NewsFilterProcessor implements IDataProcessor<NewsPost> {
 
     private final LocalDate startDate;
     private final LocalDate endDate;
     private final List<String> keywords;
+    private final List<String> normalizedKeywords;
 
     public NewsFilterProcessor(LocalDate startDate, LocalDate endDate, List<String> keywords) {
         if (keywords == null || keywords.isEmpty()) {
@@ -26,31 +30,30 @@ public class NewsFilterProcessor implements IDataProcessor {
         this.startDate = startDate;
         this.endDate = endDate;
         this.keywords = new ArrayList<>(keywords);
+        this.normalizedKeywords = this.keywords.stream()
+                .map(this::normalize)
+                .toList();
     }
 
     @Override
-    public List<? extends AbstractPost> process(List<? extends AbstractPost> rawPosts) throws CrawlerException {
+    public List<NewsPost> process(List<NewsPost> rawPosts) throws CrawlerException {
         if (rawPosts == null || rawPosts.isEmpty()) {
             return rawPosts;
         }
 
-        List<AbstractPost> filtered = new ArrayList<>();
+        List<NewsPost> filtered = new ArrayList<>();
 
-        for (AbstractPost post : rawPosts) {
-            if (!(post instanceof NewsPost newsPost)) {
-                filtered.add(post);
+        // KHÔNG CẦN INSTANCEOF VÌ INTERFACE ĐÃ ÉP KIỂU LÀ NewsPost! (OCP)
+        for (NewsPost post : rawPosts) { 
+            if (!isWithinDateRange(post.getPostDate())) {
                 continue;
             }
 
-            if (!isWithinDateRange(newsPost.getPostDate())) {
+            if (!matchesKeywords(post)) {
                 continue;
             }
 
-            if (!matchesKeywords(newsPost)) {
-                continue;
-            }
-
-            filtered.add(newsPost);
+            filtered.add(post);
         }
 
         return filtered;
@@ -75,9 +78,10 @@ public class NewsFilterProcessor implements IDataProcessor {
         }
         String title = post.getTitle() != null ? post.getTitle() : "";
         String content = post.getContent() != null ? post.getContent() : "";
-        String combined = title + " " + content;
+        // Cần normalize vì NewsFilterProcessor.java trong version trước đó không có logic normalize
+        String combined = normalize(title + " " + content); 
 
-        for (String keyword : keywords) {
+        for (String keyword : normalizedKeywords) {
             if (combined.contains(keyword)) {
                 return true;
             }
@@ -87,5 +91,14 @@ public class NewsFilterProcessor implements IDataProcessor {
 
     public List<String> getKeywords() {
         return Collections.unmodifiableList(keywords);
+    }
+
+    private String normalize(String value) {
+        if (value == null) {
+            return "";
+        }
+        String lower = value.toLowerCase(Locale.ROOT);
+        return Normalizer.normalize(lower, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "");
     }
 }

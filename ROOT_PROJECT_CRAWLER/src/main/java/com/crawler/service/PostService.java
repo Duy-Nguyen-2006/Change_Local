@@ -42,6 +42,8 @@ public class PostService implements IPostService {
 
     private final IPostRepository repository;
     private final ISearchClient crawler;
+    // Chấp nhận IDataProcessor với Wildcard Super để cho phép các processor 
+    // làm việc với AbstractPost (Webhook) hoặc lớp con của nó (Filter).
     private final List<IDataProcessor<? super AbstractPost>> processors;
 
     /**

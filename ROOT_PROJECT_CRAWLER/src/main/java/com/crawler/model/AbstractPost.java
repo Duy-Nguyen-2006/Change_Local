@@ -1,46 +1,50 @@
 package com.crawler.model;
 
+import java.util.Objects;
+
 /**
  * Lớp trừu tượng gốc cho tất cả các loại bài viết.
- * ENCAPSULATION: mọi field đều private.
- * ABSTRACTION: định nghĩa hành vi chung cần lớp con override.
+ *
+ * ENCAPSULATION:
+ * - Mọi field đều private, chỉ expose getter cho core data.
+ *
+ * ABSTRACTION:
+ * - Định nghĩa hành vi chung cần lớp con override.
+ *
+ * SRP:
+ * - Core data (sourceId, content, platform) tách biệt với enrichment metadata (PostMetadata).
  */
 public abstract class AbstractPost {
-    // Trường chung
+    // Trường chung (core data)
     private String sourceId;
     private String content;
     private String platform;
 
-    // Webhook metadata - MUTABLE
-    private String sentiment;
-    private String location;
-    private String focus;
-    private String direction;
-    
-    // THÊM CÁC TRƯỜNG MỚI ĐỂ LƯU DANH MỤC PHỤ (Damage/Rescue)
-    private String damageCategory;
-    private String rescueGoods;
+    // Webhook metadata được gom vào 1 value object riêng
+    private PostMetadata metadata;
 
     /**
      * Constructor chung cho lớp con gọi.
+     *
      * @param sourceId ID duy nhất từ nguồn (URL/ID gốc)
-     * @param content Nội dung bài viết
+     * @param content  Nội dung bài viết
      * @param platform Nền tảng (VNExpress, TikTok, X, Dantri...)
      */
     public AbstractPost(String sourceId, String content, String platform) {
-        this.sourceId = sourceId;
-        this.content = content;
-        this.platform = platform;
+        this.sourceId = Objects.requireNonNullElse(sourceId, "");
+        this.content = Objects.requireNonNullElse(content, "");
+        this.platform = Objects.requireNonNullElse(platform, "");
+        this.metadata = new PostMetadata(); // metadata rỗng mặc định
     }
 
     /**
-     * Constructor mặc định.
+     * Constructor mặc định (cần cho Gson / ORM).
      */
     public AbstractPost() {
         this("", "", "");
     }
 
-    // ========== GETTERS ONLY - NO SETTERS (DATA INTEGRITY) ==========
+    // ========== GETTERS ONLY CHO CORE DATA ==========
     public String getSourceId() {
         return sourceId;
     }
@@ -53,55 +57,81 @@ public abstract class AbstractPost {
         return platform;
     }
 
-    // ========== WEBHOOK METADATA - GETTERS & SETTERS ==========
+    // Cho phép Gson/deserializer set lại core data nếu cần
+    public void setSourceId(String sourceId) {
+        this.sourceId = Objects.requireNonNullElse(sourceId, "");
+    }
+
+    public void setContent(String content) {
+        this.content = Objects.requireNonNullElse(content, "");
+    }
+
+    public void setPlatform(String platform) {
+        this.platform = Objects.requireNonNullElse(platform, "");
+    }
+
+    // ========== METADATA (ENRICHMENT DATA) - PROXY QUA PostMetadata (RESTORED SRP & ENCAPSULATION) ==========
+
+    // Giữ PostMetadata ở mức internal để đảm bảo ENCAPSULATION,
+    // client chỉ tương tác qua các convenience methods phía dưới.
+    protected PostMetadata getMetadata() {
+        if (metadata == null) {
+            metadata = new PostMetadata();
+        }
+        return metadata;
+    }
+
+    protected void setMetadata(PostMetadata metadata) {
+        this.metadata = (metadata != null) ? metadata : new PostMetadata();
+    }
+
+    // Convenience getters
     public String getSentiment() {
-        return sentiment;
+        return getMetadata().getSentiment();
     }
 
     public void setSentiment(String sentiment) {
-        this.sentiment = sentiment;
+        getMetadata().setSentiment(sentiment);
     }
 
     public String getLocation() {
-        return location;
+        return getMetadata().getLocation();
     }
 
     public void setLocation(String location) {
-        this.location = location;
+        getMetadata().setLocation(location);
     }
 
     public String getFocus() {
-        return focus;
+        return getMetadata().getFocus();
     }
 
     public void setFocus(String focus) {
-        this.focus = focus;
+        getMetadata().setFocus(focus);
     }
 
     public String getDirection() {
-        return direction;
+        return getMetadata().getDirection();
     }
 
     public void setDirection(String direction) {
-        this.direction = direction;
+        getMetadata().setDirection(direction);
     }
 
-    // ========== GETTERS & SETTERS MỚI CHO CÁC TRƯỜNG PHỤ ==========
-    
     public String getDamageCategory() {
-        return damageCategory;
+        return getMetadata().getDamageCategory();
     }
 
     public void setDamageCategory(String damageCategory) {
-        this.damageCategory = damageCategory;
+        getMetadata().setDamageCategory(damageCategory);
     }
 
     public String getRescueGoods() {
-        return rescueGoods;
+        return getMetadata().getRescueGoods();
     }
 
     public void setRescueGoods(String rescueGoods) {
-        this.rescueGoods = rescueGoods;
+        getMetadata().setRescueGoods(rescueGoods);
     }
 
     // ========== PHƯƠNG THỨC TRỪU TƯỢNG ==========
