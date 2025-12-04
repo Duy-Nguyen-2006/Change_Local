@@ -34,6 +34,17 @@ public class PostCsvExporter {
             return;
         }
 
+        try {
+            // Tạo thư mục nếu chưa tồn tại
+            java.io.File file = new java.io.File(filePath);
+            java.io.File parentDir = file.getParentFile();
+            if (parentDir != null && !parentDir.exists()) {
+                parentDir.mkdirs();
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi khi tạo thư mục: " + e.getMessage());
+        }
+
         try (FileOutputStream fos = new FileOutputStream(filePath);
              OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
              BufferedWriter bw = new BufferedWriter(osw);

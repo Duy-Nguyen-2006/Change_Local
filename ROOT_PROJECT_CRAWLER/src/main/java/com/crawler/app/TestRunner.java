@@ -1,6 +1,7 @@
 package com.crawler.app;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List; // CHỌN CLIENT BÁO CHÍ ĐỂ TEST
 
@@ -8,6 +9,7 @@ import com.crawler.client.CrawlerException;
 import com.crawler.client.ISearchClient;
 import com.crawler.client.VNExpressClient;
 import com.crawler.model.AbstractPost;
+import com.crawler.model.NewsPost;
 import com.crawler.processor.IDataProcessor;
 import com.crawler.processor.NewsFilterProcessor;
 import com.crawler.processor.WebhookProcessor;
@@ -51,16 +53,17 @@ public class TestRunner {
             );
 
             // TẠO PROCESSOR PIPELINE: Filter trước, sau đó Enrich
-            // SỬ DỤNG GENERIC TYPE ĐÚNG CHO CONSTRUCTOR
-            @SuppressWarnings("unchecked") // Bỏ qua cảnh báo vì ta biết NewsFilterProcessor<NewsPost> là con của IDataProcessor<? super AbstractPost>
-            IDataProcessor<? super AbstractPost> newsFilter = (IDataProcessor<? super AbstractPost>) new NewsFilterProcessor(startDate, endDate, disasterKeywords);
-            @SuppressWarnings("unchecked") // Bỏ qua cảnh báo vì ta biết WebhookProcessor<AbstractPost> là con của IDataProcessor<? super AbstractPost>
-            IDataProcessor<? super AbstractPost> webhookEnricher = (IDataProcessor<? super AbstractPost>) webhookProcessor;
-
+            // NewsFilterProcessor chỉ xử lý NewsPost
+            IDataProcessor<NewsPost> newsFilter = new NewsFilterProcessor(startDate, endDate, disasterKeywords);
+            // WebhookProcessor xử lý AbstractPost
+            IDataProcessor<AbstractPost> webhookEnricher = webhookProcessor;
 
             // TIÊM PHỤ THUỘC (DIP) - Tiêm Processor Pipeline vào Service
             // NewsFilterProcessor sẽ chạy TRƯỚC WebhookProcessor
-            IPostService service = new PostService(repository, newsClient, Arrays.asList(newsFilter, webhookEnricher));
+            // Cast processors to proper type for PostService
+            List<IDataProcessor<? super AbstractPost>> processorList = new ArrayList<>();
+            processorList.add(webhookEnricher);
+            IPostService service = new PostService(repository, newsClient, processorList);
 
             // ========== 3. GỌI LOGIC NGHIỆP VỤ (SERVICE CALL) ==========
             // ĐÃ SỬA: DÙNG KEYWORD

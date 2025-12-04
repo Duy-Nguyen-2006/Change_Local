@@ -1,273 +1,313 @@
-# ROOT_PROJECT_CRAWLER
+# 🕷️ Java Web Crawler - Ứng Dụng Thu Thập Dữ Liệu Từ Nhiều Nguồn
 
-## 📖 Mô tả
+## 📋 Mô Tả Dự Án
 
-Dự án crawler thu thập dữ liệu từ các nguồn tin tức (VNExpress, Dantri) và mạng xã hội (TikTok, X/Twitter) về các sự kiện thiên tai. Dự án được thiết kế theo các nguyên tắc OOP và SOLID principles để đảm bảo tính mở rộng, bảo trì và tái sử dụng code.
+Dự án này là một ứng dụng **web crawler đa nguồn** được xây dựng bằng Java, áp dụng đầy đủ các nguyên tắc **OOP** và **SOLID** để thu thập dữ liệu từ:
+- 📰 **Báo chí**: VNExpress, Dân Trí
+- 📱 **Mạng xã hội**: TikTok, X (Twitter)
 
-## 🏗️ Cấu trúc dự án
+Ứng dụng thu thập dữ liệu về các chủ đề thiên tai (bão lũ, sạt lở, ngập lụt...), xử lý và lưu trữ vào database SQLite, đồng thời xuất ra file CSV với mã hóa UTF-8.
+
+## 🎯 Các Tính Năng Chính
+
+### ✨ Chức Năng
+- ✅ Thu thập dữ liệu từ 4 nguồn khác nhau (VNExpress, Dân Trí, TikTok, X)
+- ✅ Lọc dữ liệu theo từ khóa và khoảng thời gian
+- ✅ Làm giàu dữ liệu với metadata AI (sentiment, location, focus, damage category, rescue goods)
+- ✅ Cache thông minh (tránh crawl lại dữ liệu đã có)
+- ✅ Lưu trữ vào SQLite database
+- ✅ Xuất CSV với UTF-8 BOM (hiển thị đúng tiếng Việt trong Excel)
+- ✅ Dữ liệu engagement ngẫu nhiên (1-100) cho demo
+
+### 🏗️ Kiến Trúc & Design Patterns
+
+**Nguyên tắc OOP được áp dụng:**
+1. **Encapsulation** - Tất cả fields đều private với getter/setter
+2. **Inheritance** - `AbstractPost` → `NewsPost` / `SocialPost`
+3. **Polymorphism** - Tất cả crawler implement `ISearchClient`
+4. **Abstraction** - Sử dụng interface thay vì concrete class
+
+**SOLID Principles:**
+- **SRP** (Single Responsibility) - Mỗi class có một trách nhiệm duy nhất
+- **OCP** (Open/Closed) - Mở cho mở rộng, đóng cho sửa đổi
+- **LSP** (Liskov Substitution) - Tất cả crawler có thể thay thế cho nhau
+- **ISP** (Interface Segregation) - Interface nhỏ gọn, tập trung
+- **DIP** (Dependency Inversion) - Phụ thuộc vào abstraction
+
+**Design Patterns:**
+- Strategy Pattern (ISearchClient implementations)
+- Template Method (CrawlerEnv abstract class)
+- Dependency Injection (Constructor injection)
+- Factory Pattern (Config management)
+- Repository Pattern (Data access layer)
+
+## 📁 Cấu Trúc Thư Mục
 
 ```
 ROOT_PROJECT_CRAWLER/
-├── src/
-│   └── main/
-│       ├── java/
-│       │   └── com/
-│       │       └── crawler/
-│       │           ├── app/                    # Application entry points
-│       │           │   ├── Main.java           # Main application
-│       │           │   └── TestRunner.java     # Test runner
-│       │           ├── client/                 # Crawler clients
-│       │           │   ├── abstracts/
-│       │           │   │   └── CrawlerEnv.java # Abstract base class cho news crawlers
-│       │           │   ├── ISearchClient.java  # Interface cho social media crawlers
-│       │           │   ├── TikTokSearchClient.java
-│       │           │   ├── XSearchClient.java
-│       │           │   ├── VNExpressClient.java
-│       │           │   ├── DantriClient.java
-│       │           │   └── CrawlerException.java
-│       │           ├── config/                 # Configuration management
-│       │           │   └── CrawlerConfig.java  # Centralized config (API keys, limits, paths)
-│       │           ├── model/                  # Data models
-│       │           │   ├── AbstractPost.java   # Abstract base class cho posts
-│       │           │   ├── NewsPost.java       # News post model
-│       │           │   ├── SocialPost.java     # Social media post model
-│       │           │   └── PostMetadata.java   # Post metadata
-│       │           ├── processor/              # Data processors
-│       │           │   ├── IDataProcessor.java # Processor interface
-│       │           │   ├── NewsFilterProcessor.java
-│       │           │   └── WebhookProcessor.java
-│       │           ├── repository/             # Data persistence layer
-│       │           │   ├── IPostRepository.java
-│       │           │   ├── SQLitePostRepository.java
-│       │           │   ├── LocalDateAdapter.java
-│       │           │   └── PostTypeAdapter.java
-│       │           ├── service/                # Business logic layer
-│       │           │   ├── IPostService.java
-│       │           │   └── PostService.java
-│       │           └── util/                   # Utility classes
-│       │               ├── CacheKeyFactory.java # Cache key generation
-│       │               ├── PostCsvExporter.java  # CSV export utility
-│       │               ├── StringUtils.java
-│       │               ├── TikTokParser.java
-│       │               └── XParser.java
-│       └── resources/
-│           └── drivers/                        # Selenium drivers (chromedriver)
-├── pom.xml
-├── .gitignore
-├── README.md
-├── FIXES_SUMMARY.md                           # Tóm tắt các cải tiến đã thực hiện
-└── OOP_REVIEW_REPORT.md                       # Báo cáo đánh giá OOP
+├── src/main/java/com/crawler/
+│   ├── app/                    # Application layer
+│   │   ├── Main.java          # Entry point - Demo polymorphism
+│   │   └── TestRunner.java    # Test runner với processor pipeline
+│   ├── client/                 # Crawler layer (Data Source)
+│   │   ├── ISearchClient.java      # Interface chung cho tất cả crawler
+│   │   ├── CrawlerEnv.java         # Abstract base cho news crawlers
+│   │   ├── VNExpressClient.java    # VNExpress crawler
+│   │   ├── DantriClient.java       # Dân Trí crawler
+│   │   ├── TikTokSearchClient.java # TikTok crawler
+│   │   └── XSearchClient.java      # X (Twitter) crawler
+│   ├── config/                 # Configuration layer
+│   │   └── CrawlerConfig.java      # Centralized config management
+│   ├── model/                  # Data models
+│   │   ├── AbstractPost.java       # Base class cho tất cả posts
+│   │   ├── NewsPost.java           # Model cho bài báo
+│   │   └── SocialPost.java         # Model cho social media post
+│   ├── processor/              # Data processing layer
+│   │   ├── IDataProcessor.java         # Interface cho processors
+│   │   ├── NewsFilterProcessor.java    # Lọc NewsPost theo ngày & keyword
+│   │   └── WebhookProcessor.java       # Làm giàu dữ liệu với AI metadata
+│   ├── repository/             # Data access layer
+│   │   ├── IPostRepository.java        # Repository interface
+│   │   ├── SQLitePostRepository.java   # SQLite implementation
+│   │   ├── PostTypeAdapter.java        # Gson adapter cho AbstractPost
+│   │   └── LocalDateAdapter.java       # Gson adapter cho LocalDate
+│   ├── service/                # Business logic layer
+│   │   ├── IPostService.java       # Service interface
+│   │   └── PostService.java        # Service với caching logic
+│   └── util/                   # Utilities
+│       ├── PostCsvExporter.java    # CSV export với UTF-8 BOM
+│       ├── StringUtils.java        # String utilities (parseKeywords)
+│       ├── TikTokParser.java       # Parse TikTok JSON response
+│       └── XParser.java            # Parse X (Twitter) JSON response
+├── pom.xml                     # Maven dependencies
+└── README.md                   # Documentation
 ```
 
-## 🎯 Kiến trúc và Design Patterns
+## 🛠️ Yêu Cầu Hệ Thống
 
-### Package Structure
+### Phần Mềm Cần Cài Đặt
+1. **Java Development Kit (JDK) 17 hoặc cao hơn**
+   - Download: https://adoptium.net/
+   - Kiểm tra: `java -version`
 
-- **`app/`**: Entry points của ứng dụng
-- **`client/`**: Crawler implementations cho các nguồn dữ liệu khác nhau
-- **`config/`**: Quản lý cấu hình tập trung (API keys, limits, paths)
-- **`model/`**: Data models với inheritance hierarchy
-- **`processor/`**: Data processing pipeline (filtering, webhooks)
-- **`repository/`**: Data persistence layer (SQLite)
-- **`service/`**: Business logic layer
-- **`util/`**: Utility classes và helpers
+2. **Apache Maven 3.6+**
+   - Download: https://maven.apache.org/download.cgi
+   - Kiểm tra: `mvn -version`
 
-### OOP Principles
+3. **Git** (optional, để clone project)
+   - Download: https://git-scm.com/
 
-#### 1. **ENCAPSULATION (Tính đóng gói)**
-- Tất cả fields trong model classes đều là `private`
-- Sử dụng getter/setter với validation
-- Protected fields đã được chuyển sang private với proper accessors
+### Thư Viện Dependencies (được Maven tự động tải)
+- `opencsv 5.12.0` - CSV processing
+- `selenium-java 4.38.0` - Web automation
+- `jsoup 1.21.2` - HTML parsing
+- `gson 2.10.1` - JSON parsing
+- `sqlite-jdbc 3.46.0.0` - SQLite database
+- `httpclient5 5.3` - HTTP client
 
-#### 2. **ABSTRACTION (Tính trừu tượng)**
-- `ISearchClient`: Interface cho social media crawlers
-- `CrawlerEnv`: Abstract class cho news crawlers
-- `AbstractPost`: Abstract base class cho posts
-- `IDataProcessor`: Interface cho data processors
-- `IPostRepository`: Interface cho data persistence
+## 🚀 Hướng Dẫn Chạy Dự Án
 
-#### 3. **POLYMORPHISM (Tính đa hình)**
-- Sử dụng interface/abstract class để reference concrete implementations
-- Runtime method resolution
-- Ví dụ: `List<? extends AbstractPost>` có thể chứa `NewsPost` hoặc `SocialPost`
+### Cách 1: Sử dụng Maven Exec Plugin (Khuyến nghị)
 
-#### 4. **INHERITANCE (Tính kế thừa)**
-- `VNExpressClient`, `DantriClient` extends `CrawlerEnv`
-- `NewsPost`, `SocialPost` extends `AbstractPost`
-- `TikTokSearchClient`, `XSearchClient` implements `ISearchClient`
+```powershell
+# Di chuyển vào thư mục project
+cd D:\OOP_Local_Change\ROOT_PROJECT_CRAWLER
 
-### SOLID Principles
+# Biên dịch project
+mvn clean compile
 
-#### **Single Responsibility Principle (SRP)**
-- Mỗi class có một trách nhiệm duy nhất:
-  - `PostCsvExporter`: Chỉ export CSV
-  - `CacheKeyFactory`: Chỉ tạo cache keys
-  - `CrawlerConfig`: Chỉ quản lý config
-  - `PostService`: Chỉ xử lý business logic
+# Chạy Main.java (Demo tất cả crawler)
+mvn exec:java "-Dexec.mainClass=com.crawler.app.Main"
 
-#### **Open/Closed Principle (OCP)**
-- Mở cho mở rộng: Thêm crawler mới bằng cách implement `ISearchClient`
-- Đóng cho sửa đổi: Không cần sửa code cũ khi thêm crawler mới
+# HOẶC chạy TestRunner.java (Demo với processor pipeline)
+mvn exec:java "-Dexec.mainClass=com.crawler.app.TestRunner"
+```
 
-#### **Liskov Substitution Principle (LSP)**
-- `NewsPost` và `SocialPost` có thể thay thế `AbstractPost` ở mọi nơi
-- Các client implementations có thể thay thế `ISearchClient`
+### Cách 2: Build JAR và Chạy
 
-#### **Interface Segregation Principle (ISP)**
-- Interfaces nhỏ, focused (`ISearchClient`, `IDataProcessor`, `IPostRepository`)
-- Clients không phụ thuộc vào methods họ không sử dụng
+```powershell
+# Build JAR file
+mvn clean package
 
-#### **Dependency Inversion Principle (DIP)**
-- High-level modules phụ thuộc vào abstractions
-- `PostService` phụ thuộc vào `IPostRepository`, không phụ thuộc vào `SQLitePostRepository`
+# Chạy JAR
+java -cp target/crawler-1.0-SNAPSHOT.jar com.crawler.app.Main
+```
 
-## 🚀 Cài đặt và Sử dụng
+### Cách 3: Chạy Từ IDE (IntelliJ IDEA / Eclipse)
 
-### Yêu cầu
+1. Import project vào IDE (File → Open → chọn thư mục project)
+2. Đợi Maven tải dependencies
+3. Right-click vào `Main.java` → Run 'Main.main()'
 
-- Java 17+
-- Maven 3.6+
-- Chrome/Chromium browser (cho Selenium)
-- ChromeDriver (đặt vào `src/main/resources/drivers/`)
+## 📊 Kết Quả Đầu Ra
 
-### Build Project
+### 1. Console Output
+Ứng dụng sẽ in ra màn hình:
+- Tiến trình crawl từ từng nguồn
+- Số lượng bài viết thu thập được
+- Mẫu dữ liệu (2 bài đầu tiên từ mỗi nguồn)
+- Đường dẫn file CSV output
 
-```bash
+### 2. CSV File
+**File output:** `D:\OOP_Local_Change\ROOT_PROJECT_CRAWLER\AllClients_results_utf8.csv`
+
+**Cột dữ liệu (12 cột):**
+1. `platform` - Nguồn (vnexpress, dantri, tiktok, x)
+2. `title` - Tiêu đề bài viết
+3. `content` - Nội dung
+4. `url` - Link gốc
+5. `date` - Ngày đăng
+6. `engagement` - Điểm tương tác (comments hoặc reactions)
+7. `sentiment` - Cảm xúc (positive, negative, neutral)
+8. `location` - Địa điểm
+9. `focus` - Trọng tâm (damage, rescue, none)
+10. `direction` - Hướng xử lý (urgent, plan, info)
+11. `damage_category` - Loại thiệt hại (nếu focus=damage)
+12. `rescue_goods` - Hàng cứu trợ (nếu focus=rescue)
+
+**Encoding:** UTF-8 với BOM để Excel hiển thị đúng tiếng Việt
+
+### 3. SQLite Database
+**File:** `posts.db` (tự động tạo)
+
+Chứa 2 bảng:
+- `news_posts` - Dữ liệu từ báo chí
+- `social_posts` - Dữ liệu từ mạng xã hội
+
+## 🔧 Cấu Hình (Configuration)
+
+Ứng dụng hỗ trợ cấu hình thông qua:
+
+### 1. Environment Variables (Ưu tiên cao nhất)
+```powershell
+# Thiết lập API keys
+$env:RAPIDAPI_KEY = "your_rapidapi_key_here"
+$env:GEMINI_API_KEY = "your_gemini_key_here"
+
+# Thiết lập output directory
+$env:CRAWLER_OUTPUT_DIR = "D:\custom_output"
+
+# Chạy ứng dụng
+mvn exec:java "-Dexec.mainClass=com.crawler.app.Main"
+```
+
+### 2. System Properties
+```powershell
+mvn exec:java "-Dexec.mainClass=com.crawler.app.Main" `
+  "-Dcrawler.output.dir=D:\custom_output" `
+  "-Dcrawler.default.limit=200"
+```
+
+### 3. Default Values (Hardcoded)
+Nếu không set, sẽ dùng giá trị mặc định trong `CrawlerConfig.java`
+
+## 🧪 Testing & Debugging
+
+### Kiểm Tra Compilation Errors
+```powershell
 mvn clean compile
 ```
 
-### Chạy ứng dụng
-
-```bash
-# Chạy main application
-mvn exec:java -Dexec.mainClass="com.crawler.app.Main"
-
-# Hoặc với Maven exec plugin
-mvn exec:java
+### Chạy Với Debug Logging
+```powershell
+mvn -X exec:java "-Dexec.mainClass=com.crawler.app.Main"
 ```
 
-### Cấu hình (Configuration)
-
-Dự án sử dụng `CrawlerConfig` class để quản lý cấu hình tập trung. Có thể override config bằng:
-
-#### 1. Environment Variables (Ưu tiên cao nhất)
-
-```bash
-# Windows PowerShell
-$env:RAPIDAPI_KEY="your-rapidapi-key"
-$env:GEMINI_API_KEY="your-gemini-key"
-$env:CRAWLER_OUTPUT_DIR="output"
-$env:CRAWLER_MAX_PAGES="10"
-$env:CRAWLER_DEFAULT_LIMIT="120"
-
-# Linux/Mac
-export RAPIDAPI_KEY="your-rapidapi-key"
-export GEMINI_API_KEY="your-gemini-key"
-export CRAWLER_OUTPUT_DIR="output"
-export CRAWLER_MAX_PAGES="10"
-export CRAWLER_DEFAULT_LIMIT="120"
+### Test Riêng Từng Crawler
+Sửa `Main.java` để chỉ chạy crawler cần test:
+```java
+List<ISearchClient> allCrawlers = new ArrayList<>();
+allCrawlers.add(new VNExpressClient());  // Chỉ test VNExpress
 ```
 
-#### 2. System Properties
+## 🐛 Xử Lý Lỗi Thường Gặp
 
-```bash
-java -Dcrawler.rapidapi.key="your-key" \
-     -Dcrawler.gemini.api.key="your-key" \
-     -Dcrawler.output.dir="output" \
-     -Dcrawler.max.pages="10" \
-     -Dcrawler.default.limit="120" \
-     -cp target/classes com.crawler.app.Main
-```
+### Lỗi 1: `mvn: command not found`
+**Nguyên nhân:** Maven chưa được cài đặt hoặc chưa add vào PATH
 
-#### 3. Default Values
+**Giải pháp:**
+1. Download Maven từ https://maven.apache.org/download.cgi
+2. Extract và add thư mục `bin` vào PATH
+3. Restart PowerShell
 
-Nếu không set env vars hoặc system properties, sẽ dùng default values:
-- `RAPIDAPI_KEY`: `""` (empty, cần set)
-- `GEMINI_API_KEY`: `""` (empty, cần set)
-- `CRAWLER_OUTPUT_DIR`: `"output"`
-- `CRAWLER_MAX_PAGES`: `5`
-- `CRAWLER_DEFAULT_LIMIT`: `120`
+### Lỗi 2: `java.lang.UnsupportedClassVersionError`
+**Nguyên nhân:** JDK version < 17
 
-## 📦 Dependencies
+**Giải pháp:**
+1. Download JDK 17+: https://adoptium.net/
+2. Set JAVA_HOME: `$env:JAVA_HOME = "C:\Program Files\Java\jdk-17"`
+3. Kiểm tra: `java -version`
 
-Dự án sử dụng các thư viện sau (xem `pom.xml`):
+### Lỗi 3: Tiếng Việt bị lỗi font trong Excel
+**Nguyên nhân:** Excel không nhận diện UTF-8
 
-- **OpenCSV** (5.12.0): CSV file processing
-- **Selenium** (4.38.0): Web automation và scraping
-- **Jsoup** (1.21.2): HTML parsing cho news crawlers
-- **Gson** (2.10.1): JSON parsing cho API responses
-- **SQLite JDBC** (3.46.0.0): Database storage
-- **Apache HttpClient** (5.3): HTTP client cho webhook calls
+**Giải pháp:**
+- File đã có UTF-8 BOM, mở trực tiếp bằng Excel sẽ OK
+- Nếu vẫn lỗi: Excel → Data → Get Data → From Text/CSV → chọn UTF-8
 
-## 🔑 Tính năng chính
+### Lỗi 4: API rate limit exceeded
+**Nguyên nhân:** Gọi API quá nhiều lần
 
-### 1. Multi-source Crawling
-- **News Sources**: VNExpress, Dantri
-- **Social Media**: TikTok, X/Twitter
-- Hỗ trợ date range filtering
+**Giải pháp:**
+- Giảm `DEFAULT_LIMIT` trong các Client class
+- Hoặc đợi vài phút rồi thử lại
 
-### 2. Data Processing Pipeline
-- Filtering processors
-- Webhook processors
-- Extensible processor architecture
+### Lỗi 5: Compilation error về generics
+**Nguyên nhân:** Type mismatch giữa `NewsPost` và `AbstractPost`
 
-### 3. Data Persistence
-- SQLite database storage
-- CSV export với UTF-8 BOM (Excel compatible)
-- Polymorphic post handling
+**Giải pháp:** Đã được fix trong `TestRunner.java` - chỉ dùng `WebhookProcessor` trong pipeline
 
-### 4. Configuration Management
-- Centralized config class
-- Environment variable support
-- System property override
-- Default values fallback
+## 📚 Kiến Thức Liên Quan
 
-## ✅ Các cải tiến đã thực hiện
+### OOP Concepts Demonstrated
+1. **Encapsulation:** Private fields, public getters/setters
+2. **Inheritance:** `AbstractPost` → `NewsPost`/`SocialPost`
+3. **Polymorphism:** `ISearchClient` interface với nhiều implementations
+4. **Abstraction:** Abstract methods, interfaces
 
-Xem chi tiết trong [FIXES_SUMMARY.md](FIXES_SUMMARY.md)
+### SOLID Principles Applied
+- **S** - Mỗi class có một nhiệm vụ duy nhất
+- **O** - Extend qua inheritance/interface, không modify code cũ
+- **L** - Tất cả crawler có thể thay thế cho nhau
+- **I** - Interface nhỏ gọn, không ép client implement thừa
+- **D** - Depend on abstraction (ISearchClient), not concrete
 
-1. ✅ **Bảo mật**: API keys không còn hardcoded, sử dụng environment variables
-2. ✅ **Maintainability**: Magic numbers được tập trung vào `CrawlerConfig`
-3. ✅ **Type Safety**: Loại bỏ unsafe type casts
-4. ✅ **Encapsulation**: Protected fields được đóng gói tốt hơn
-5. ✅ **Portability**: File paths không còn hardcoded
-6. ✅ **Contract Compliance**: Date filtering được implement đúng
-7. ✅ **SRP**: Tách CSV logic ra `PostCsvExporter` class
-8. ✅ **Utility Classes**: Tạo `CacheKeyFactory` cho cache key generation
+### Design Patterns Used
+- **Strategy:** Different crawling strategies for different sources
+- **Template Method:** `CrawlerEnv` defines skeleton, subclass fills in
+- **Dependency Injection:** Constructor injection in `PostService`
+- **Repository:** Abstraction layer for data access
+- **Factory:** `CrawlerConfig` for configuration management
 
-## 📝 Lưu ý
+## 📝 Ghi Chú Quan Trọng
 
-1. **ChromeDriver**: Đặt `chromedriver.exe` (Windows) hoặc `chromedriver` (Linux/Mac) vào `src/main/resources/drivers/`
+1. **API Keys:** Dự án sử dụng free tier API, có thể bị rate limit
+2. **Internet Required:** Cần kết nối internet để crawl dữ liệu
+3. **UTF-8 BOM:** File CSV có BOM để Excel hiển thị đúng tiếng Việt
+4. **Random Data:** Engagement metrics được random (1-100) cho demo
+5. **Caching:** Dữ liệu đã crawl sẽ được cache trong SQLite
 
-2. **API Keys**: Cần set `RAPIDAPI_KEY` và `GEMINI_API_KEY` trước khi chạy:
-   ```bash
-   $env:RAPIDAPI_KEY="your-key"
-   $env:GEMINI_API_KEY="your-key"
-   ```
+## 👨‍💻 Tác Giả & Đóng Góp
 
-3. **Database**: SQLite database sẽ được tạo tự động ở `disaster_post_data.db`
+**Mục đích:** Dự án học tập về OOP và SOLID principles trong Java
 
-4. **Output**: CSV files sẽ được export vào thư mục được cấu hình trong `CrawlerConfig` (mặc định: `output/`)
-
-## 🧪 Testing
-
-```bash
-# Chạy test runner
-mvn exec:java -Dexec.mainClass="com.crawler.app.TestRunner"
-```
-
-## 📚 Tài liệu tham khảo
-
-- [OOP_REVIEW_REPORT.md](OOP_REVIEW_REPORT.md): Báo cáo đánh giá OOP chi tiết
-- [FIXES_SUMMARY.md](FIXES_SUMMARY.md): Tóm tắt các cải tiến đã thực hiện
-
-## 👥 Đóng góp
-
-Dự án tuân thủ các nguyên tắc OOP và SOLID. Khi thêm tính năng mới:
-- Implement interfaces thay vì sửa code cũ (OCP)
-- Mỗi class chỉ có một trách nhiệm (SRP)
-- Sử dụng abstractions thay vì concrete classes (DIP)
+**Đóng góp:** Mọi đóng góp đều được chào đón! Tạo Pull Request hoặc Issue trên GitHub.
 
 ## 📄 License
 
-[Thêm license nếu có]
+Dự án này được phát triển cho mục đích học tập và demo. Không dùng cho mục đích thương mại.
+
+---
+
+## 🎓 Tổng Kết
+
+Dự án này minh họa cách áp dụng **đầy đủ các nguyên tắc OOP và SOLID** trong một ứng dụng thực tế:
+- ✅ Clean Architecture với phân tầng rõ ràng
+- ✅ Dependency Injection cho testability
+- ✅ Interface-based programming cho flexibility
+- ✅ Proper error handling và logging
+- ✅ Configuration management
+- ✅ Data persistence với SQLite
+- ✅ CSV export với proper encoding
+
+**Happy Coding! 🚀**
