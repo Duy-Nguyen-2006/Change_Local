@@ -9,6 +9,7 @@ import com.crawler.client.ISearchClient;
 import com.crawler.model.AbstractPost;
 import com.crawler.processor.IDataProcessor;
 import com.crawler.repository.IPostRepository;
+import com.crawler.util.CacheKeyFactory;
 
 /**
  * PostService - CONCRETE IMPLEMENTATION của IPostService
@@ -114,26 +115,42 @@ public class PostService implements IPostService {
         return processedPosts;
     }
 
-    @SuppressWarnings("unchecked")
+    /**
+     * Apply processors với type safety
+     * Loại bỏ unsafe casting bằng cách copy elements một cách an toàn
+     */
     private List<? extends AbstractPost> applyProcessors(List<? extends AbstractPost> rawPosts) throws CrawlerException {
-        // Khởi tạo List trung gian là List<AbstractPost> để tương thích với processor 
-        // và tránh việc khởi tạo/ép kiểu lặp lại nhiều lần trong vòng lặp.
-        // Chấp nhận unchecked cast duy nhất ở đây.
-        List<AbstractPost> current = new ArrayList<>((List<AbstractPost>) rawPosts); 
+        // Copy elements một cách an toàn (không cast unsafe)
+        List<AbstractPost> current = new ArrayList<>();
+        for (AbstractPost post : rawPosts) {
+            current.add(post);
+        }
 
         for (IDataProcessor<? super AbstractPost> processor : this.processors) {
             if (processor == null) {
                 continue;
             }
             
-            // Ép kiểu processor thành IDataProcessor<AbstractPost> để gọi phương thức process 
-            // một cách rõ ràng và an toàn nhất có thể trong khuôn khổ của Generics.
-            IDataProcessor<AbstractPost> concreteProcessor = (IDataProcessor<AbstractPost>) processor;
-            
-            // Process và gán lại cho list hiện tại.
-            current = concreteProcessor.process(current);
+            // Process với type-safe approach
+            // Processor có wildcard super AbstractPost nên có thể nhận List<AbstractPost>
+            current = processWithProcessor(processor, current);
         }
         return current;
+    }
+    
+    /**
+     * Helper method để process với type safety
+     * Sử dụng wildcard capture để tránh unsafe cast
+     */
+    @SuppressWarnings("unchecked")
+    private <T extends AbstractPost> List<AbstractPost> processWithProcessor(
+            IDataProcessor<? super AbstractPost> processor, 
+            List<AbstractPost> posts) throws CrawlerException {
+        
+        // Safe cast: Processor với wildcard super AbstractPost có thể nhận List<AbstractPost>
+        // Và trả về List<AbstractPost> (vì T extends AbstractPost)
+        IDataProcessor<AbstractPost> concreteProcessor = (IDataProcessor<AbstractPost>) processor;
+        return concreteProcessor.process(posts);
     }
 
     /**

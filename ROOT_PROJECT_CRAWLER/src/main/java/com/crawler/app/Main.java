@@ -1,5 +1,6 @@
 package com.crawler.app;
 
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -10,6 +11,7 @@ import com.crawler.client.ISearchClient;
 import com.crawler.client.TikTokSearchClient;
 import com.crawler.client.VNExpressClient;
 import com.crawler.client.XSearchClient;
+import com.crawler.config.CrawlerConfig;
 import com.crawler.model.AbstractPost;
 import com.crawler.util.PostCsvExporter;
 
@@ -108,7 +110,12 @@ public class Main {
         }
 
         // ========== EXPORT TẤT CẢ KẾT QUẢ VÀO MỘT FILE DUY NHẤT ==========
-        String outputFile = "D:\\OOP_Local_Change\\ROOT_PROJECT_CRAWLER\\AllClients_results_utf8.csv";
+        // Sử dụng CrawlerConfig để lấy output directory (có thể override bằng env var hoặc system property)
+        String outputDir = CrawlerConfig.getOutputDir();
+        String outputFile = Paths.get(outputDir, "AllClients_results_utf8.csv")
+            .toAbsolutePath()
+            .toString();
+        
         if (!allResults.isEmpty()) {
             PostCsvExporter.export(allResults, outputFile);
             System.out.println("\n📊 Đã lưu TOÀN BỘ " + allResults.size() + " kết quả vào: " + outputFile);

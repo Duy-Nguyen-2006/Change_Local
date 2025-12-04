@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.crawler.config.CrawlerConfig;
 import com.crawler.model.SocialPost;
 import com.crawler.util.TikTokParser;
 
@@ -24,9 +25,7 @@ import com.crawler.util.TikTokParser;
 public class TikTokSearchClient implements ISearchClient {
 
     // ENCAPSULATION - Đóng gói các thuộc tính private
-    private static final int DEFAULT_LIMIT = 120;
-    private static final String RAPIDAPI_KEY = "84fd34ba1cmsh4264611a2a81c26p14f915jsn4b51787a5eb1";
-    private static final String HOST = "tiktok-scraper7.p.rapidapi.com";
+    // Configuration được đọc từ CrawlerConfig (environment variables hoặc system properties)
     private HttpClient httpClient;
 
     /**
@@ -64,7 +63,7 @@ public class TikTokSearchClient implements ISearchClient {
             int pageSize = 30;
             int cursor = 0;
             int collected = 0;
-            int limit = DEFAULT_LIMIT;
+            int limit = CrawlerConfig.getDefaultLimit();
 
             List<SocialPost> allVideos = new ArrayList<>();
 
@@ -117,12 +116,13 @@ public class TikTokSearchClient implements ISearchClient {
                         "&publish_time=" + publishTime +
                         "&sort_type=" + sortType;
 
-        String url = "https://" + HOST + "/feed/search?" + queryParams;
+        String host = CrawlerConfig.getRapidApiHost();
+        String url = "https://" + host + "/feed/search?" + queryParams;
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
-                .header("X-RapidAPI-Key", RAPIDAPI_KEY)
-                .header("X-RapidAPI-Host", HOST)
+                .header("X-RapidAPI-Key", CrawlerConfig.getRapidApiKey())
+                .header("X-RapidAPI-Host", host)
                 .GET()
                 .build();
 

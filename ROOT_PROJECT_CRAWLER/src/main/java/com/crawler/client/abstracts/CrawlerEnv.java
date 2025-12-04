@@ -2,6 +2,7 @@ package com.crawler.client.abstracts;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import com.crawler.client.CrawlerException;
@@ -11,14 +12,27 @@ import com.crawler.model.NewsPost;
 /**
  * Lớp trừu tượng cho News Crawlers.
  * Tách logic lọc ra khỏi crawler (SRP) - chỉ chịu trách nhiệm crawl thô.
+ * 
+ * ENCAPSULATION: Protected field được đóng gói với validation và defensive copy
  */
 public abstract class CrawlerEnv implements ISearchClient {
-    protected ArrayList<NewsPost> resultPosts = new ArrayList<>();
+    // ENCAPSULATION: Private field thay vì protected
+    private final List<NewsPost> resultPosts = new ArrayList<>();
 
-    protected void addPost(NewsPost sample) {
-        resultPosts.add(sample);
+    /**
+     * Protected method để subclass thêm post
+     * ENCAPSULATION: Validation và null check
+     */
+    protected void addPost(NewsPost post) {
+        if (post == null) {
+            throw new IllegalArgumentException("Post cannot be null");
+        }
+        resultPosts.add(post);
     }
 
+    /**
+     * Protected method để subclass clear results
+     */
     protected void clearResults() {
         resultPosts.clear();
     }
@@ -28,12 +42,19 @@ public abstract class CrawlerEnv implements ISearchClient {
      */
     public abstract void getPosts(String title, LocalDate startDate, LocalDate endDate);
 
+    /**
+     * Get result size
+     */
     public int resultSize() {
         return resultPosts.size();
     }
 
-    public ArrayList<NewsPost> getResults() {
-        return new ArrayList<>(resultPosts);
+    /**
+     * Get results với defensive copy
+     * ENCAPSULATION: Trả về unmodifiable list để tránh external modification
+     */
+    public List<NewsPost> getResults() {
+        return Collections.unmodifiableList(new ArrayList<>(resultPosts));
     }
 
     @Override

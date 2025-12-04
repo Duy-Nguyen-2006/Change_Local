@@ -16,6 +16,7 @@ import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 
 import com.crawler.client.CrawlerException;
+import com.crawler.config.CrawlerConfig;
 import com.crawler.model.AbstractPost;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -31,9 +32,6 @@ import com.google.gson.JsonParser;
  */
 public class WebhookProcessor implements IDataProcessor<AbstractPost>, AutoCloseable {
 
-    private static final String DEFAULT_AI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
-    private static final String DEFAULT_MODEL = "gemini-1.5-flash";
-    private static final String DEFAULT_API_KEY = "AIzaSyA42BH1RwgFUIQxebfH0IeTGhtu_tURGt8";
     private static final String SYSTEM_PROMPT = """
             Bạn là AI phân loại nội dung bài viết.
             Yêu cầu: trả về JSON với các trường loai_bai_viet, cam_xuc_bai_viet, tinh_thanh, huong_bai_viet.
@@ -72,15 +70,17 @@ public class WebhookProcessor implements IDataProcessor<AbstractPost>, AutoClose
     }
 
     public WebhookProcessor(String aiApiUrl) {
-        this(aiApiUrl, DEFAULT_API_KEY, DEFAULT_MODEL, SYSTEM_PROMPT);
+        this(aiApiUrl, CrawlerConfig.getGeminiApiKey(), CrawlerConfig.getGeminiModel(), SYSTEM_PROMPT);
     }
 
     public WebhookProcessor() {
-        this(DEFAULT_AI_URL, DEFAULT_API_KEY, DEFAULT_MODEL, SYSTEM_PROMPT);
+        this(CrawlerConfig.getGeminiApiUrl(), CrawlerConfig.getGeminiApiKey(), 
+            CrawlerConfig.getGeminiModel(), SYSTEM_PROMPT);
     }
 
     public static WebhookProcessor mockProcessor() {
-        return new WebhookProcessor(null, DEFAULT_API_KEY, DEFAULT_MODEL, SYSTEM_PROMPT);
+        return new WebhookProcessor(null, CrawlerConfig.getGeminiApiKey(), 
+            CrawlerConfig.getGeminiModel(), SYSTEM_PROMPT);
     }
 
     @Override

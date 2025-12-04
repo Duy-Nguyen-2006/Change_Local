@@ -11,6 +11,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import com.crawler.client.abstracts.CrawlerEnv;
+import com.crawler.config.CrawlerConfig;
 import com.crawler.model.NewsPost;
 
 /**
@@ -22,7 +23,7 @@ public class VNExpressClient extends CrawlerEnv {
     @Override
     // BẮT BUỘC PHẢI THÊM 2 THAM SỐ DATE VÀO CONTRACT NÀY!
     public void getPosts(String search_keyword, LocalDate startDate, LocalDate endDate) {
-        final int PAGES = 5;
+        final int PAGES = CrawlerConfig.getMaxPages();
 
         for (int i = 0; i < PAGES; ++i) {
             try {
@@ -44,6 +45,14 @@ public class VNExpressClient extends CrawlerEnv {
                         continue;
                     }
 
+                    // Parse post date và FILTER THEO DATE RANGE
+                    LocalDate postDate = LocalDate.ofInstant(Instant.ofEpochSecond(instant), ZoneId.systemDefault());
+                    
+                    // Skip posts ngoài date range
+                    if (postDate.isBefore(startDate) || postDate.isAfter(endDate)) {
+                        continue;
+                    }
+
                     try {
                         comments = Integer.parseInt(post.select("p.meta-news").get(0)
                                                     .getElementsByTag("span").get(0).text().strip());
@@ -54,7 +63,7 @@ public class VNExpressClient extends CrawlerEnv {
 
                     addPost(new NewsPost(
                             sourceId,
-                            LocalDate.ofInstant(Instant.ofEpochSecond(instant), ZoneId.systemDefault()),
+                            postDate,
                             title,
                             summary,
                             "VNExpress",

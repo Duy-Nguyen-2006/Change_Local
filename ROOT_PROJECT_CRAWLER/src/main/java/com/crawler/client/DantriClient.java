@@ -11,6 +11,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import com.crawler.client.abstracts.CrawlerEnv;
+import com.crawler.config.CrawlerConfig;
 import com.crawler.model.NewsPost;
 
 /**
@@ -33,7 +34,7 @@ public class DantriClient extends CrawlerEnv {
     @Override
     // BẮT BUỘC PHẢI THÊM 2 THAM SỐ DATE VÀO CONTRACT NÀY!
     public void getPosts(String search_input, LocalDate startDate, LocalDate endDate) {
-        final int PAGES = 5;
+        final int PAGES = CrawlerConfig.getMaxPages();
 
         for (int i = 0; i < PAGES; ++i) {
             try {
@@ -58,6 +59,14 @@ public class DantriClient extends CrawlerEnv {
                         continue;
                     }
 
+                    // Parse post date và FILTER THEO DATE RANGE
+                    LocalDate postDate = (date == null || date.isEmpty()) ? LocalDate.now() : dateExtract(date);
+                    
+                    // Skip posts ngoài date range
+                    if (postDate.isBefore(startDate) || postDate.isAfter(endDate)) {
+                        continue;
+                    }
+
                     try {
                         comments = Integer.parseInt(excerpt_box.getElementsByTag("button").text());
                     } catch (Exception e) {
@@ -67,7 +76,7 @@ public class DantriClient extends CrawlerEnv {
 
                     addPost(new NewsPost(
                             sourceId,
-                            (date == null || date.isEmpty()) ? LocalDate.now() : dateExtract(date),
+                            postDate,
                             title,
                             excerpt,
                             "Dân trí",
